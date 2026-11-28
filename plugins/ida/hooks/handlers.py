@@ -42,11 +42,11 @@ log = logging.getLogger("aops.ida.handlers")
 
 PREMISE_CHECK_POINTER = (
     "All agent-to-agent communication follows `premise-check` (`ida:premise-check`)."
-    " Write every inter-agent message solely in unfenced prose Argdown blocks stating"
-    " the original ask upfront and breaking out every premise as its own sourced claim"
-    " (or bare `[no claim]` for an empty acknowledgement). Evaluators unpack premises"
-    " for embedded unsourced assertions on the face of the record -- zero de novo"
-    " fact-checking -- and record appealable natural-language reasons."
+    " Write inter-agent messages in unfenced prose Argdown blocks stating the ask upfront"
+    " and sourcing load-bearing premises proportionately (or bare `[no claim]` when claim-free)."
+    " Run judicial review on the message alone -- zero substantive checking outside it --"
+    " scaling effort and reasons to what turns on it, accepting unambiguous fixes directly with"
+    " `AMENDED`, and remanding only remaining material defects."
 )
 
 

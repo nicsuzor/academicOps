@@ -32,13 +32,13 @@ Dispatch the warranted specialist lenses concurrently in one turn as separate in
 - **Strategic fit** (`pauli`, a second invocation that never sees the compliance review): Core premise, strategic direction, and PKB congruence (with an inline brief).
 - **Quality** (`marsha`, _when an audience-facing artifact was built_): Qualitative excellence and audience resonance across live rendered outputs per `verify` (evaluating qualitative standards directly with reasons; never linters, functional QA, or fake numeric proxies).
 
-Every reviewer judges proportion within its lens: whether the artifact builds more machinery than needed, whether each requested change justifies its cost, and whether discretionary design, structure, or phrasing choices within the author's remit are reasonable (bounded-reasonableness deference protects choices that are not clearly wrong). Apply and commit uncontroversial fixes (`fix(review): <description>`) only when serialized and authorized on a writable branch (e.g. `fix` mode), itemizing applied fixes; during parallel read-only dispatch, itemize suggested fixes instead.
+Every reviewer judges proportion within its lens: whether the artifact builds more machinery than needed, whether each requested change justifies its cost, and whether discretionary design, structure, or phrasing choices within the author's remit are reasonable (bounded-reasonableness deference protects choices that are not clearly wrong). Where defects are clearly fixable without ambiguity, reviewers with write permissions and no conflicting instruction restriction apply and commit the fixes in place directly (`fix(review): <description>`), itemizing applied fixes; reviewers who cannot edit directly (read-only instructions, missing write permissions, or parallel read-only dispatch) suggest the exact fix for the coordinator or fix pass to apply.
 
 ### 3. Dialectical Deliberation _(Proportional to Stakes)_
 
 - **Fast path**: For single-pass checks with no fatal blockers or cross-lens contradictions, proceed directly to reconciliation.
 - **Dialectical rounds**:
-  - Run judicial review on specialist handbacks strictly on the face of the record per `ida:premise-check` (zero _de novo_ factual re-checking of primary sources; remand unsupported or conflicting claims to the reviewer, never remand over Argdown formatting or layout unless support relations are ambiguous, skip meta-queries on refused transports once settled, and judge any duplicate packet freshly against its own actual lines).
+  - Run `ida:premise-check` judicial review on handbacks on the message alone (zero outside substantive checks; proportionate depth, material remands only).
   - Screen jurisdiction and standards: reject reviewer findings that act outside jurisdiction, police layout or phrasing preferences within reasonable authorial discretion, demand fake numeric proxies for qualitative judgment, or impose a standard of proof inappropriate in the circumstances.
   - Verify warrants on the record: documentation (`README.md`, knowledge notes) proves only what the text says, not live working state (require completed verification evidence or quoted live state, else mark an open question); cited PRs or code are authoritative only if shown current and backed by a specification or decision record.
   - When valid in-jurisdiction findings clash (e.g. compliance vs. strategic parsimony), cross-examine reviewers directly in prose Argdown blocks per `ida:premise-check` to force defense, concession, or synthesis without softening tension; intervene immediately on altitude drift.
@@ -51,7 +51,7 @@ Compile calibration (chosen tier, rounds, contextual standard, target altitude),
 | - | - | - | - |
 
 - Collapse concordant findings across reviewers while preserving each reviewer's verdict; where they differ, state the adopted disposition and why (recording reasons whenever an out-of-jurisdiction, taste-loop, fake-proxy, or wrong-standard finding is struck). Keep `pauli`'s strategic congruence verdict distinct even when concordant.
-- Do not issue `REVISE` solely for items already resolved cleanly by authorized self-fixes or mere phrasing preferences.
+- Do not issue `REVISE` solely for unambiguous items already resolved cleanly in place, nor bounce exact deterministic fixes back when the reviewer or coordinator has permission and compliant instructions to commit them directly, nor over mere phrasing preferences.
 - **Overall verdict**: Any valid substantive specialist `FAIL` within jurisdiction forces `FAIL` (never downgrade or soften a valid substantive in-jurisdiction `FAIL`). Any remaining material `REVISE` forces `REVISE`. Otherwise `PASS`.
 
 ### 5. Action and Reporting

@@ -1,19 +1,17 @@
 ---
-title: Dispatch workflow
+title: Dispatch
 type: template
-description: Direct worker dispatch workflow for headless execution -- reifies the task, then delegates to the dispatcher to launch worker containers seeded with its instructions, with no child task creation and Argdown-only handback per premise-check.
-tags: [workflow, dispatch, worker, execution, fast-path]
+description: "Crew: hand a reified task to the dispatcher to run in a worker container, with no child tasks and no claim or release ceremony."
+tags: [workflow, dispatch, worker, fast-path]
 ---
 
-# Dispatch Workflow
+## What this step does
 
-## Purpose and Scope
-
-Governs direct delegation of headless execution to the dispatcher. The dispatcher never executes code directly; in an interactive session, it launches isolated worker containers against the existing outer task without creating child tasks on the task graph. A worker container has no plugins and no PKB access; it receives the full reified task as its prompt.
+Sends existing work to a worker container. The worker has no plugins and no PKB access; the reified task is its whole prompt, and its final message is written back to the task by the dispatch service.
 
 ## Requirements
 
-1. **Reify, then delegate to dispatcher**: The PKB custodian (`pauli`) reifies the task (`/reify`) just before dispatch so its instructions are complete without PKB knowledge; then dispatch the request directly to the dispatcher to launch worker containers.
-2. **No child task creation**: Dispatch against the existing outer task without minting child tasks on the graph.
-3. **No pull or dump ceremony**: Neither the caller nor the dispatcher executes `/pull`, `/dump`, or task claim or release; the dispatched worker runs none of them either, and hands back through its final output message, which the polecat service writes to the task as the container is reaped.
-4. **Handback requirement**: Report back solely in clean Argdown prose per `premise-check`, stating the original ask upfront and quoting deciding dispatch outputs inline.
+1. The custodian (`pauli`) reifies the task (`/reify`) just before dispatch, so it is complete without PKB knowledge.
+2. The dispatcher starts the worker against the existing task; no child tasks are minted.
+3. No one runs `/pull`, `/dump`, claim or release for it, the worker included.
+4. Report the dispatch outcome in prose Argdown per `premise-check`.

@@ -1,7 +1,7 @@
 """Tests for the premise-check verdict script and its gate.
 
 Covers:
-1. A verdict is one token (PASS, REVISE, FAIL) plus a free-text reason; the
+1. A verdict is one token (PASS, AMENDED, REVISE, FAIL) plus a free-text reason; the
    reason may come inline, from a file, or from stdin. A malformed verdict
    never disarms the gate.
 2. record_verdict() emits a TOOL span (via a stubbed claude_code_tracer)
@@ -148,7 +148,7 @@ class _StubTracer:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("token", ["PASS", "REVISE", "FAIL"])
+@pytest.mark.parametrize("token", ["PASS", "AMENDED", "REVISE", "FAIL"])
 def test_record_verdict_accepts_each_token_with_reason_and_disarms(token):
     session_id = f"sess-{token}"
     pcg.arm(session_id, claim_id="claim-1")
@@ -197,7 +197,7 @@ def test_record_verdict_rejects_unknown_token_and_stays_armed():
     session_id = "sess-bad-token"
     pcg.arm(session_id, claim_id="claim-1")
 
-    with pytest.raises(ValueError, match="PASS, REVISE, FAIL"):
+    with pytest.raises(ValueError, match="PASS, AMENDED, REVISE, FAIL"):
         pcv.record_verdict(
             session_id=session_id,
             claim_id="claim-1",
@@ -1213,7 +1213,7 @@ def test_prose_report_arms_uniformly_and_accepts_pass_with_natural_language_reas
     res = pcg.premise_check_arm(ctx)
     assert res is not None
     assert "no argument block supplied" not in res.inject_text
-    assert "--verdict <PASS|REVISE|FAIL>" in res.inject_text
+    assert "--verdict <PASS|AMENDED|REVISE|FAIL>" in res.inject_text
     assert pcg.is_armed(session_id) is True
 
     # The gate refuses dispatch while armed awaiting verdict
@@ -1579,7 +1579,7 @@ def test_arm_handler_returns_two_line_prompt_note_and_no_message_text():
     assert "PR #12 is merged." not in res.inject_text
     cmd = pcg.format_verdict_command(claim_id, ctx.hooks_dir, session_id)
     assert res.inject_text.splitlines()[1] == cmd
-    assert "--verdict <PASS|REVISE|FAIL>" in res.inject_text
+    assert "--verdict <PASS|AMENDED|REVISE|FAIL>" in res.inject_text
     assert "--verdict PASS" not in res.inject_text
 
 
@@ -1857,7 +1857,7 @@ def test_printed_command_runs_from_different_cwd_under_claude_code_and_agy(tmp_p
         reason_file = tmp_path / f"reason-{client}.txt"
         reason_file.write_text(_pass_reason(claim_id), encoding="utf-8")
         run_tokens = shlex.split(
-            cmd.replace("<PASS|REVISE|FAIL>", "PASS").replace(
+            cmd.replace("<PASS|AMENDED|REVISE|FAIL>", "PASS").replace(
                 "<path>", shlex.quote(str(reason_file))
             )
         )
@@ -1928,7 +1928,9 @@ def test_printed_command_runs_with_relative_hooks_dir_from_plugin_cwd(tmp_path, 
     reason_file = tmp_path / "reason-rel.txt"
     reason_file.write_text(_pass_reason(claim_id), encoding="utf-8")
     run_tokens = shlex.split(
-        cmd.replace("<PASS|REVISE|FAIL>", "PASS").replace("<path>", shlex.quote(str(reason_file)))
+        cmd.replace("<PASS|AMENDED|REVISE|FAIL>", "PASS").replace(
+            "<path>", shlex.quote(str(reason_file))
+        )
     )
     res = subprocess.run(
         run_tokens,

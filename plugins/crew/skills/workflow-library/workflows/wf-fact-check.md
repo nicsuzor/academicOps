@@ -1,31 +1,23 @@
 ---
 alias:
   - wf-fact-check
-description: Fills evaluate slot for factual, empirical, and citation-bearing claims against primary sources. Skip for pure judgment or stylistic work.
+description: "Review: check the factual, empirical and citation claims in a draft against their sources. Skip for pure judgement or style."
 id: wf-fact-check
 tags:
   - wf-template
   - qa
-title: Fact-Check Verification
+title: Fact check
 type: template
 ---
 
 ## What this step does
 
-Checks factual and evidentiary claims in a draft against primary sources -- citations resolve, quoted numbers match the source, described behavior matches direct observation rather than assumption, and links are live and point where claimed. Narrower and more targeted than full empirical QA: verifies claims are **true**, not whether the work meets broader design goals.
+Checks that claims are true: citations resolve, numbers match their source, described behaviour matches what is observed, links go where they say.
 
 ## Output contract
 
-Return the fact-check handback to calling agents solely in prose Argdown blocks per `premise-check` (one atomic sourced claim per premise), stating per claim checked:
-
-- The claim, the source checked, and the resolving link, command, or output.
-- `PASS` (verified against source) or `FAIL` (contradicted or unverified -- including `"source unavailable"` or `"couldn't reproduce"`), with no third state.
-- A summary count (`N claims checked, N passed, N failed`) so downstream evaluators do not re-derive coverage.
-
-## Record surface (mandatory)
-
-Working ledgers, logs, and intermediate reasoning belong on the commissioning PKB task -- never committed to a public or shared artifact repository. The repository under review receives only the completed work and, where required by a review requirement, a concise summary (verdict, counts, and a task pointer) rather than internal deliberation logs.
+Per claim checked: the claim, the source and what it showed, and `PASS` or `FAIL` (contradicted or unverifiable counts as `FAIL`). Then a count: checked, passed, failed. Where defects are clearly fixable without ambiguity, fix them in place if write permissions and instructions permit; otherwise state the exact fix. Working notes stay on the task, never in the artifact under review.
 
 ## When to include
 
-Any artifact making factual, empirical, or citation-bearing claims (research writing, grant text, data citations, or code claiming a concrete behavior fix).
+Any artifact whose value rests on factual or citation claims.

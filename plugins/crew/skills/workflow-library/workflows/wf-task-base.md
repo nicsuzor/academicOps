@@ -1,19 +1,28 @@
 ---
 title: Task base
 type: template
-description: Foundation for every task executed via /pull -- defines the canonical task schema, structural placement, groundwork rule, post-release boundary, and container boundary.
+description: "Worker: the base every task carries -- goal, acceptance, where the output goes, and the report. Use alone for any task no narrower base fits."
 tags: [base, task]
 ---
 
-- **GOAL:** <one sentence stating the observable end-state>
-- **ACCEPTANCE CRITERIA:** <one line each, stating observable outcomes bounded to what the executor delivers (ending once shipped and reported) rather than mechanism prescriptions, file:line edits, or post-release user acts>
-  - <criterion>
-  - <criterion>
-- [ ] **OUTPUT:** <destination repo or URI; no local container paths, as isolated workers run independently>
-- **REPORT:** Update the task via `/dump` in place (current state only; delete stale prose). Tick `[x]` an acceptance item only with inline primary evidence and citation for that item itself; leave unmet items `[ ]` with their limit stated. Agent responsibility ends once shipped/released and the user is informed; never hold a task open waiting to prove the user installed, pulled, or deployed it.
+## What this step does
 
-## Placement and Execution
+Sets the minimum every task needs. Add nothing to a task that its ask or another selected template does not require: the work is reviewed separately once it is handed back, so the task carries no review, sign-off, approval or delivery steps of its own.
 
-- **Single combined task by default**: Structure repo-scoped work requiring design, build, PR, or verification as one combined task under `/pull`. Split into child or follow-up tasks ONLY when a step requires a different repository, different execution window, or separate external agent/session; never place loose siblings under an external parent.
-- **Groundwork first**: Read target files in full before editing (no keyhole reads) and settle unknowns from the PKB before escalating. Treat user direction to perform, settle, or deliver work as approval for design and route decisions; release as `partial` (or route to `status: review`, `assignee: user`) with evaluated options and a reasoned recommendation strictly for invariant boundaries (external audience, unruled merge, unbounded cost) or explicit user-reserved pre-action holds (never `review` for agent work, and never class-based holds).
-- **Container boundary**: A refusal at or beyond the container boundary is a halt, never a workaround; in-container sandbox refusals are not walls.
+## Task shape
+
+- **Goal**: one sentence naming the end state.
+- **Acceptance**: observable outcomes the worker itself delivers, one line each; never line numbers, mechanisms, or acts after hand-back (review, CI, merge, deployment, someone reading it).
+- **Output**: where the result goes. One of: the answer itself, in the final report; commits on the working branch; a file at a shared location the task names. Never only in the container's own scratch space.
+- **Report**: the final message states what was done and, for each acceptance item, the evidence (output, path, commit) or why it is unmet.
+
+## Rules
+
+- One task by default. Split only for a second repository or a wait on something outside the session.
+- Read what you change in full before changing it.
+- Needs no privileged access: no pushing, opening or merging pull requests, publishing, deploying, or sending anything to anyone. If the work cannot finish without such a step, stop there and say so in the report.
+- A refusal at the container boundary is a stop, never a workaround.
+
+## When to include
+
+Every task.

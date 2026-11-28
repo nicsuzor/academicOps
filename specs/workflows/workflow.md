@@ -61,37 +61,44 @@ Components come from three sources:
 
 ### Universal templates
 
-The universal workflow library (`plugins/crew/skills/workflow-library/workflows/`) holds **28 templates**:
+The universal workflow library (`plugins/crew/skills/workflow-library/workflows/`) holds **25 templates**, grouped by the label that opens each description (who runs it). Work templates carry no review stage: handed-back work is reviewed separately, by the `Review:` templates.
 
-- `wf-code-task-base`: Foundation for code-change tasks executed via `/pull`.
-- `wf-dialectical-review`: Universal default dialectical review workflow coordinating strategic coherence, compliance, and empirical verification perspectives.
-- `wf-dispatch`: Direct worker dispatch workflow for headless container execution without child task creation.
-- `wf-dispatch-queue`: Dispatch queue ranking ready tasks for user approval and container launch.
-- `wf-doc-base`: Foundation for tasks changing instruction text or repository documentation.
-- `wf-effectual-plan`: Explore strategic uncertainty, surface load-bearing assumptions, and propose bounded next steps.
-- `wf-empirical-review`: Review how agents, workflows, checks or tools perform only on the observed-trace store of real sessions; never synthetic or constructed runs, reported figures or earlier audits.
-- `wf-escalated-approval`: Hand a complete artifact over for an escalated explicit decision while keeping dependent work blocked.
-- `wf-fact-check`: Verify factual, empirical, and citation-bearing claims against primary sources.
-- `wf-finish`: Default task completion and release workflow separating work and review deliverables where required.
-- `wf-interactive`: Workflow governing interactive sessions under one outer task claimed via `/q`.
-- `wf-keep-analysis-data`: Persist intermediate datasets from slow or costly analyses for reuse.
-- `wf-lookup`: Lightweight lookup workflow routing PKB reads, writes, curation, and graph operations to the custodian.
-- `wf-pr-move-along`: Drive an open pull request through checks, proportionate review, conflict settlement, and landing.
-- `wf-pr-sweep`: Sweep open pull requests across repositories in parallel, triage against merge policies, and queue next-step tasks.
-- `wf-qa`: Universal empirical QA verification against live tests, probes, rendered outputs, and governing standards.
-- `wf-qa-visual`: Capture and multimodally verify rendered visual outputs against criteria.
-- `wf-quick-fix`: Shortened delivery route for simple, uncontroversial changes.
-- `wf-rbg`: Universal compliance review against axioms, rules, authority scope, data boundaries, and enforcement hierarchy.
-- `wf-reconcile`: Universal graph reconciliation and task truth-maintenance procedure.
-- `wf-research`: Investigate problem spaces, prior work, and trade-offs grounded in primary evidence.
-- `wf-research-and-implement`: Sequence grounded investigation, specification, independent review, and test-first implementation on one PR.
-- `wf-research-output`: Sequence an academic output from direction and audience through evidence, review, and release.
-- `wf-signoff`: Author a concise one-page summary digest for decision or release sign-off.
-- `wf-spec`: Author a complete technical specification before implementation.
-- `wf-strategic-fit`: Universal strategic-direction and PKB congruence review.
-- `wf-structural-map`: Extract a four-part descriptive structural map (Aims, Methodology, Analytical theory, Contribution) of academic work.
-- `wf-task-base`: Foundation for every task executed via `/pull` (schema, placement, groundwork, and boundaries).
-- `wf-tdd`: Testing standards and red-green-refactor cycle for executable code changes.
+**Worker**
+
+- `wf-code-task-base`: Change files in one repository -- code, docs, instructions or config -- run the checks the repository already has, and commit to the working branch.
+- `wf-escalated-approval`: Stop at a real approval boundary -- external audience, a merge no ruling covers, unbounded cost, an outside party's approval, or a hold the user reserved -- leaving the finished artifact on the record.
+- `wf-finish`: How a task ends -- output where the task says, acceptance ticked with evidence, one release status.
+- `wf-keep-analysis-data`: Persist intermediate datasets from slow, costly, or hard-to-reproduce analyses so follow-up queries and revised assumptions reuse saved data without re-collection.
+- `wf-research`: Find something out -- answer a question about a system, field or option set from primary evidence, with a recommendation where one is asked for.
+- `wf-spec`: Write a technical specification for a non-trivial feature or change -- problem, users, scope, design, interfaces and acceptance.
+- `wf-structural-map`: Extract a four-part descriptive structural map (Aims, Methodology, Analytical theory, Contribution) of academic work without evaluation or rewriting.
+- `wf-task-base`: The base every task carries -- goal, acceptance, where the output goes, and the report. Use alone for any task no narrower base fits.
+- `wf-tdd`: Red-green test cycle for a code change, only in repositories that already keep a test suite.
+
+**Review**
+
+- `wf-dialectical-review`: The default review of handed-back work -- a coordinator sizes the review to the stakes, sends only the lenses the work needs, and reconciles their verdicts into PASS, REVISE or FAIL.
+- `wf-empirical-review`: Measure how agents, workflows, checks or tools perform, from the trace store of real sessions only -- never synthetic, constructed or simulated runs, or earlier reports' figures.
+- `wf-fact-check`: Check the factual, empirical and citation claims in a draft against their sources. Skip for pure judgement or style.
+- `wf-qa-visual`: How to capture and judge rendered visual output inside a quality review.
+- `wf-qa`: Quality lens -- check the real artifact, as its audience meets it, against its requirements and purpose, returning PASS, REVISE or FAIL.
+- `wf-rbg`: Rule-compliance lens -- judge an artifact, change or decision against the axioms, user and project rules, scope of authority and data boundaries, returning PASS, REVISE or FAIL.
+- `wf-strategic-fit`: Strategic-fit lens -- is the work solving the right problem, as simply as it could, consistently with existing work and decisions, returning PASS, REVISE or FAIL.
+
+**Planning**
+
+- `wf-effectual-plan`: Explore strategic uncertainty, surface load-bearing assumptions, and propose bounded high-information next steps without executing them.
+- `wf-research-output`: The stages of an academic output (paper, report, essay, talk, dataset) from question to finished draft. Used to decompose an initiative, not as one worker task.
+
+**Crew**
+
+- `wf-dispatch-queue`: The custodian ranks ready tasks, the front agent puts them to the user with a recommendation each, and the dispatcher starts workers on the ones approved.
+- `wf-dispatch`: Hand a reified task to the dispatcher to run in a worker container, with no child tasks and no claim or release ceremony.
+- `wf-interactive`: How an interactive session is run -- one outer task, delegation to internal delegates, checked seams, and one handover.
+- `wf-lookup`: PKB reads and writes, memory curation, graph operations and overlap checks -- straight to the custodian, with no task and no ceremony.
+- `wf-pr-move-along`: Take one open pull request to merged, or to a clearly recorded reason it cannot merge yet, under the repository's merge rules.
+- `wf-pr-sweep`: Triage every open pull request in one or more repositories, queue the next step for each, and report a disposition for all of them.
+- `wf-reconcile`: Bring the task graph back in line with reality -- advance open asks, sync PRs and releases, clear agent work out of review, settle failed tasks, reset stale claims, and surface prepared user decisions to the daily note.
 
 **How they go together is the composing agent's judgment, not a rule here.** Which components a task needs, how they combine, and how much process the work warrants are worked out at composition time, against the task in hand.
 

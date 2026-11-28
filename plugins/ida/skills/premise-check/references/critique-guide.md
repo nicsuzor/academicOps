@@ -1,147 +1,160 @@
 # Premise-Check Critique Guide
 
-Worked multi-layer exemplars, realistic defect patterns with 3-way remand cures, edge-case rulings, and appealable verdict reason templates for `ida:premise-check`.
+Worked exemplars, defect patterns with 3-way remand cures, edge-case rulings, and appealable verdict reason templates for `ida:premise-check`.
 
 ## Defect Taxonomy (Plain-English Classes)
 
+**Materiality & amendment rule:** Every remand cure below (outside non-waivable authority or standing-rule breaches requiring sender rework) applies only when curing the defect could change what is relayed or done next and cannot be fixed without ambiguity on the record. Where every defect is clearly fixable without ambiguity from the record, accept with `AMENDED` and correct the claim directly rather than remanding. Immaterial slips receive `PASS` with a brief non-blocking note omitted from upward relays.
+
 | Defect Class | What It Looks Like on the Record | Minimal Remand Cure |
 | - | - | - |
-| **Premise Smuggling (Bundled / Unsourced Claim)** | A premise packs multiple assertions that bear independent weight in the warrant into one sentence, or hides an unattributed assumption inside a subordinate clause, parenthetical, appositive, or omnibus relay (`"The same checked report found X and Y"`) under a source backing only part of the sentence. (Summarizing an already-verified `verdict-...` message solely to identify or bound it without asserting new unverified facts passes.) | `REVISE`: break each load-bearing assertion into its own numbered premise with its own stated source/locator (or mark it assumed / gather primary evidence). |
-| **Non-Argdown Agent-to-Agent Prose** | An inter-agent message includes conversational framing, a parallel prose summary, loose trailing bullets, or plain-prose replies outside prose Argdown blocks. (Readable scaffolding inside blocks -- bulleted numbered lines, bold handles, continuous or per-block numbering, step pointers -- passes unless support relations are ambiguous.) | `REVISE`: rewrite the entire agent-to-agent message strictly as unfenced prose Argdown blocks. |
-| **Missing Bridge / Non-Sequitur** | Conclusion introduces a new claim no premise supplies, skips an epistemic layer, or drops the inference bar. | `REVISE`: supply the missing bridge premise or intermediate inference bar. |
-| **Circular or Empty Warrant** | Inference bar merely restates a premise ("because it passed, it passes") with no independent rule. | `REVISE`: state a licensing rule that could fail independently of the premises. |
-| **Quantifier & Scope Drift** | Premises cover a narrow sample, single case, or one subtype while the conclusion asserts an unqualified universal ("all", "only", "never", "systematically") that outruns what the applicable standard of proof supports. | `REVISE`: narrow the qualifier to match the premises and standard of proof, or supply a bounded search. |
-| **Construct / Proxy Drift** | Premises observe a proxy (liveness, log count, wording match) while claiming a substantive construct (customer impact, completeness); or silently swap a specified medium/method. | `REVISE` or `FAIL`: restore specified medium/method, supply an empirical bridge, or narrow claim to the proxy. |
-| **Domain-Mismatched Authority** | Warrant cites a rule, benchmark, or policy written for a different domain or operating regime without bridging the difference. | `REVISE`: cite authority governing the actual operating domain or narrow the recommendation. |
-| **Unruled Rival Explanation** | A simpler or equally plausible world state produces the same quoted evidence (traffic burst, version skew, regional outage, or open "their call" deferral). | `REVISE`: name the rival explanation and either rule it out from primary evidence or qualify the conclusion. |
-| **Observation-Surface Overreach** | Claim reaches beyond what the reported inspection can observe (e.g., concluding live runtime behavior from static file reads alone). | `REVISE`: qualify claim to static inspection, or run the live check. |
-| **Secondary Summary Substitution** | Originating agent cites a task status, PKB note, or peer prose on live state instead of quoting the primary source inline. | `REVISE`: remand for direct primary observation with inline quote and locator. |
-| **Unjustified Standard of Proof / Stakes Laundering** | Conclusion relies on a relaxed standard of proof via bare assertion ("low-stakes", "reversible", "obvious", or engine output as authority) without showing why that standard is reasonable and appropriate in all the circumstances or set by the principal. | `REVISE`: justify why the standard is reasonable and appropriate in all the circumstances, narrow the conclusion, or gather primary evidence. |
-| **Unanswered Ask / Authority Drift** | Message drops part of the upfront ask or acts beyond delegated scope (_ultra vires_). | `REVISE` (dropped ask) or `FAIL` (_ultra vires_): non-waivable. |
-| **Non-Waivable Rule Breach** | Delivered work leaves a standing axiom or project rule breach in place without a higher rule or direct user waiver. | `REVISE` or `FAIL`: non-waivable; require compliant fix (disclosing an out-of-scope breach is compliant escalation). |
-| **Bare Relay Stub** | Coordinator reports only `"subagent passed verdict-X"` without relaying substantive atomic premises, sources, qualifiers, or rule violations. | `REVISE`: relay each checked finding as its own numbered premise carrying verdict ID, primary source, and qualifiers. |
+| **Premise Smuggling** | Load-bearing premise packs independent assertions into one sentence, hides an unsourced claim in a clause/parenthetical/appositive or omnibus relay (`"The same checked report found X and Y"`), or makes a first-person tool claim (`"I read..."`, `"I ran..."`, `"I checked..."`) lacking a locator/output when stakes warrant one. (Identifying an already-verified `verdict-...` without new unverified claims passes.) | `REVISE`: split each load-bearing assertion into its own numbered premise with inline basis (or mark assumed / gather primary evidence). |
+| **Non-Argdown Prose** | Material non-Argdown prose outside blocks (framing, parallel summary, loose bullets, plain reply) obscures grounds or warrants. (Readable internal scaffolding -- bulleted `(n)` lines, bold handles, step pointers -- passes unless support is ambiguous.) | `REVISE`: rewrite strictly as unfenced prose Argdown blocks. |
+| **Missing Bridge** | Conclusion introduces a claim no premise supplies, skips a layer, or drops `-- ... --`. | `REVISE`: add missing bridge premise or inference bar. |
+| **Circular Warrant** | Bar merely restates a premise ("because it passed, it passes") with no independent rule. | `REVISE`: state a licensing rule that could fail independently. |
+| **Quantifier / Scope Drift** | Narrow sample or single case supports an unqualified universal ("all", "only", "never") outrunning the applicable standard. | `REVISE`: narrow qualifier to premises/standard, or run a bounded search. |
+| **Construct / Proxy Drift** | Premises observe a proxy (liveness, log count) while claiming a substantive construct (customer impact, completeness); or silently swap a specified medium/method. | `REVISE`/`FAIL`: restore medium/method, bridge proxy to construct, or narrow claim. |
+| **Domain-Mismatched Authority** | Warrant cites a rule or policy for a different domain or regime without bridging the gap. | `REVISE`: cite governing authority or narrow recommendation. |
+| **Unruled Rival** | A simpler or equally plausible world state yields the same quoted evidence (burst, version skew, `"their call"` deferral). | `REVISE`: rule out the rival from primary evidence or qualify conclusion. |
+| **Observation-Surface Overreach** | Claim exceeds what the inspection can observe (e.g., live runtime behavior from static file reads). | `REVISE`: qualify to static inspection, or run live check. |
+| **Secondary Summary Substitution** | On a stakes-bearing live-state conclusion where direct inspection could change next action, originator cites a task status, PKB note, or peer prose instead of primary source. (Qualified summaries pass on low-stakes read-only sweeps.) | `REVISE`: remand for primary observation with inline quote and locator. |
+| **Stakes Laundering** | High-stakes, irreversible, or primary-decision conclusion is disguised as `"low-stakes"` or `"obvious"` (or cites engine output as authority) without showing why that standard fits. (Light scrutiny on genuinely low-stakes, read-only, or cheaply redone work complies.) | `REVISE`: justify standard fit, narrow conclusion, or gather primary evidence. |
+| **Facial Contradiction** | Incompatible assertions on the face of the message (conflicting counts/states, claiming work premises show never ran) or unexplained material contradictions across the same sender's own revisions on an unchanged claim in an active remand. | `FAIL`: cite exact contradiction on the text (optionally noting clean severable parts), strictly without outside or forensic checks. |
+| **Unanswered Ask / Authority Drift** | Drops a material part of the upfront ask or acts beyond delegated scope (_ultra vires_). | `REVISE` (dropped ask) or `FAIL` (_ultra vires_): non-waivable. |
+| **Non-Waivable Rule Breach** | Delivered work leaves a standing axiom or project rule breach in place without a higher rule or direct user waiver. | `REVISE`/`FAIL`: non-waivable; require compliant fix (disclosing out-of-scope breaches complies). |
+| **Bare Relay Stub** | Coordinator reports only `"subagent passed verdict-X"` without relaying premises, sources, qualifiers, or rule breaches. | `REVISE`: relay each checked finding in its own premise with verdict ID, primary locator, and qualifiers. |
 
 ## Edge-Case Rulings & Proportionality Standards
 
-- **Standard of proof in all the circumstances**: No universal standard of proof can be fixed in advance; setting or overriding it is always the principal's choice. Where unset by the principal, the writer must rely on (and justify where non-obvious) a standard of proof reasonable and appropriate in all the circumstances, and the reviewer checks whether the conclusion is capable of being supported by the presented basis under that standard without demanding certainty where none exists. Bare hand-waves ("obvious", engine output as authority) never establish appropriateness; authority comes from user direction, governing specification, or reasoned fit to the question and risks in the circumstances.
-- **Legitimate discretion & layout neutrality**: Interpretation, synthesis, or discretionary choice within the sender's remit that is not clearly wrong passes under administrative-law review. Never substitute reviewer phrasing or design preferences, and never remand over Argdown formatting, numbering, or scaffolding unless it leaves genuinely ambiguous which premises and warrant license which conclusion.
-- **Authorized pauses & partial handovers**: When work stops at a principal-requested pause, handover, or choice properly belonging to the principal, stating the remaining open questions as explicit premises that qualify settled conclusions and license the proposed resumption sequence satisfies ask coverage without violating `exercise-authority`.
-- **Premature, duplicate, and superseded handbacks**: Subagents await child runs and report once at their stopping point unless async tracking was requested; premature "still running" reports get `REVISE`. Once a verified report answers the ask, never query the sender about refused or superseded transports; if a duplicate/superseded report still arrives and arms the gate, inspect its actual lines (never copy-pasting reasons or line numbers from an earlier verdict) and record a brief, accurate verdict noting any line differences and relaying zero new claims beyond the settled `verdict-<id>`.
-- **Deliverable form & method fidelity**: When `## Ask` or active user turns specify a method, form, design, value, or medium noun (canvas, diagram, map, code, spec), audit departures independently rather than trusting `"no departures"`. Harmless rewording preserving the construct passes; silent medium or method swaps fail.
-- **Strike baseless run-will-settle doubts**: An unexplained worry about whether a route, tool, or step will work when run ("haven't checked whether X works") with no stated reason it would fail is speculation. Judge valid as if absent -- never remand for a probe or relay it as a risk.
-- **Never strike admitted unchecked facts readable now**: When a writer admits a load-bearing fact inspectable now is unchecked ("haven't checked whether PR merged", "assumed"), treat the premise as weak, not speculative. Judge whether its qualifier bears the step's stakes; live-state claims bound for the user resting on unchecked premises fail.
-- **Exited-worker presentation rewrite**: When an exited worker leaves a complete primary evidentiary record with rough presentation only, the receiver may restate the argument cleanly from that recorded evidence. Evidentiary gaps, logical defects, or dropped asks still route to a fresh worker.
-- **Unreachability by construction**: When an ask demanded an outcome unfulfillable at the reporter's stopping point and the report validly proves unreachability from quoted facts, treat that ask as answered rather than issuing `REVISE` or `FAIL`.
+- **Proportional effort & materiality**: Scale checking depth, evidentiary detail, and verdict reasons to stakes (doing less on low-stakes, read-only, or cheaply redone work). Immaterial slips receive `PASS` with a brief non-blocking note omitted from relays.
+- **Unambiguous deterministic amendment (`AMENDED`)**: Where every defect is clearly fixable without ambiguity from what is already on the message (such as narrowing an overstated qualifier or scoping a claim to the subset already established in its own premises), accept with `AMENDED`, amend the claim directly so it is fully accurate, record the original defect and resulting amended claim in the reason, and relay the amended claim without remanding to the sender. Never invent facts or check outside sources to amend (closed-record bounds still hold); reserve `REVISE` for missing evidence, unruled rivals, or non-deterministic defects requiring sender judgment.
+- **Severability & partial relay**: Because `verdict.py` records one token per claim, sever multi-part messages explicitly: dropping an unneeded weak part gets `PASS` naming strictly the supported relayable subset; remanding or rejecting a materially defective part gets `REVISE`/`FAIL`, optionally naming clean independent parts with scope bounds (preventing rework on remand and allowing those independently verified parts to relay separately, while never relaying failed or remanded claims).
+- **Closed record & suspected invention**: The record is the message under review and nothing outside it. Never rely on, consult, or test against anything outside the message (in-context state, prior unrelated turns, harness state/telemetry, tool logs, external sources, or other agents) to verify truth, confirm execution, or authenticate values, and never escalate receipt precision as an anti-fabrication proxy at any stakes level. Separately verify ask coverage against the originating ask and catch unexplained material contradictions across the same sender's own successive submissions on an unchanged claim in an active remand. Without a material facial defect, `PASS` on the message alone without commissioning ad-hoc fact-checkers (deliverable QA and `/learn` sit outside `premise-check`).
+- **Relaying senders pass remands down**: When a relaying sender receives an evidentiary `REVISE` or `FAIL`, it passes the remand down to the originating agent (or dispatches a fresh worker if exited or discredited by facial contradiction) rather than opening primary sources itself.
+- **Standard of proof in all the circumstances**: Setting the standard of proof is always the principal's choice. Where unset, the writer applies (and justifies where non-obvious) a standard reasonable and appropriate in all the circumstances, and the checker judges whether the conclusion is supported without demanding certainty where none exists. Unjustified hand-waves (`"obvious"`, engine output as authority) fail on contested, non-obvious, or stakes-bearing conclusions; routine or obvious warrants pass without ceremony on low-stakes steps.
+- **Legitimate discretion & layout neutrality**: Judgment within remit that is not clearly wrong passes under administrative-law judicial review. Never substitute phrasing/design preferences or remand over Argdown layout, numbering, or scaffolding unless support relations are ambiguous.
+- **Authorized pauses & partial handovers**: At a principal-requested pause, handover, or user-reserved choice, open-question premises qualifying settled conclusions satisfy ask coverage without violating `exercise-authority`.
+- **Premature, duplicate, & superseded handbacks**: Subagents await child runs and report once at their stopping point unless async tracking was requested; premature `"still running"` reports get `REVISE`. Once settled, never query the sender about refused transports; if a duplicate/superseded packet arms the gate, inspect its actual lines (never pasting prior reasons) and record a concise verdict relaying zero new claims beyond the settled `verdict-<id>`.
+- **Deliverable form & method fidelity**: When `## Ask` or user turns specify a method, form, design, value, or medium noun (canvas, diagram, map, code, spec), check departures on the face of the message against the ask. Construct-preserving rewording passes; silent material swaps fail.
+- **Strike baseless run-will-settle doubts**: Unexplained worries about whether a route or tool will work (`"haven't checked whether X works"`) with no stated failure reason are speculation -- judge valid as if absent; never remand for a probe or relay as risk.
+- **Never strike admitted unchecked facts readable now**: Admitting a readable load-bearing fact is unchecked (`"haven't checked if PR merged"`, `"assumed"`) marks a weak premise, not speculation. Fail material live-state claims whose cure could change user action; sever or omit immaterial unchecked asides.
+- **Exited-worker presentation rewrite**: If an exited worker leaves a complete primary record with rough presentation only, the receiver may restate it cleanly from that evidence; gaps or dropped asks route to a fresh worker.
+- **Unreachability by construction**: When an ask was unfulfillable at the reporter's stopping point and quoted facts validly prove unreachability, treat the ask as answered.
 
 ## Worked Exemplar: Multi-Layer Diagnostic & Recommendation
 
-Notice how every observation sits in its own atomic numbered premise with an exact locator, cross-block references cite the exact block that established each fact, zero facts are smuggled into inference bars, and each block passes its own Contrast Test:
+Each load-bearing observation sits in its own numbered premise with an exact locator, cross-block references cite the establishing block, zero facts sit in bars, and each block passes its Contrast Test:
 
 ```markdown
-**Original Ask (`task-42/AC1-AC2`):** (AC1) Diagnose the primary cause of the p95 latency jump in the notification worker after deploy `c81f4a2`; (AC2) recommend the lowest-risk fix.
+**Original Ask (`task-42/AC1-AC2`):** (AC1) Diagnose the p95 latency jump in the notification worker after deploy `c81f4a2`; (AC2) recommend the lowest-risk fix.
 
-**Main Conclusion:** The p95 tail-latency spike (`420 ms` -> `4,850 ms`) is isolated to HTTP 429 retry paths caused by quadrupling `worker_concurrency` (`4` -> `16`) and replacing jittered exponential backoff with fixed `0.5s` retries in `worker/pool.py:34-48` (subject to unobservable sub-minute partner burst throttling). Reverting `worker_concurrency` to `4` and restoring jittered exponential backoff is the lowest-risk fix, pending staging load confirmation.
+**Main Conclusion:** The p95 spike (`420 ms` -> `4,850 ms`) is isolated to HTTP 429 retries caused by raising `worker_concurrency` (`4` -> `16`) and replacing jittered exponential backoff with fixed `0.5s` retries in `worker/pool.py:34-48` (subject to unobservable sub-minute partner burst limits). Reverting to `worker_concurrency = 4` and jittered backoff is the lowest-risk fix, pending staging load confirmation.
 
 ### Latency Pattern Isolation
 
-(1) Production traces for `2026-10-12 00:00-06:00 UTC` (`n = 1,420` dispatches, commit `c81f4a2`) show p95 delivery latency rose to `4,850 ms` from `420 ms` on baseline `2026-10-11` (`n = 1,388`, commit `9d0e11b`).
-(2) Across those same two trace windows (`c81f4a2` vs. `9d0e11b`), median delivery latency stayed flat (`190 ms` vs. `185 ms`).
-(3) Grouping the `1,420` spans on `2026-10-12` by HTTP status shows 100% of spans exceeding `1,500 ms` (`n = 89`) hit `status = 429` before retrying, while non-429 spans (`n = 1,331`) held p95 at `210 ms`.
-(4) Downstream partner headers logged `X-RateLimit-Limit: 60/min` unchanged across both windows.
--- When a tail-latency jump appears exclusively on HTTP 429 retry spans while median and non-429 tail latency stay flat under an unchanged advertised rate limit, the bottleneck lies in rate-limit contention and retry behavior rather than general network degradation or a quota reduction. An external traffic burst could also trip an unchanged limit; that rival is tested directly in the next block. --
-(5) So the p95 latency spike at commit `c81f4a2` is isolated to HTTP 429 retry paths under an unchanged `60/min` partner quota.
+(1) Production traces for `2026-10-12 00:00-06:00 UTC` (`n = 1,420`, commit `c81f4a2`) show p95 latency rose to `4,850 ms` from `420 ms` on baseline `2026-10-11` (`n = 1,388`, commit `9d0e11b`).
+(2) Across both windows (`c81f4a2` vs. `9d0e11b`), median latency stayed flat (`190 ms` vs. `185 ms`).
+(3) On `2026-10-12`, 100% of spans exceeding `1,500 ms` (`n = 89`) hit `status = 429` before retrying; non-429 spans (`n = 1,331`) held p95 at `210 ms`.
+(4) Partner headers logged `X-RateLimit-Limit: 60/min` unchanged across both windows.
+-- A tail jump confined to HTTP 429 spans while median and non-429 p95 stay flat under an unchanged quota isolates contention/retry behavior rather than network degradation or quota cuts. An external traffic burst could also trip the limit; tested next. --
+(5) So the p95 spike at `c81f4a2` is isolated to HTTP 429 retry paths under an unchanged `60/min` partner quota.
 
 ### Root Cause Diagnosis and Rival Check
 
-(1) From `Latency Pattern Isolation`, the p95 spike at commit `c81f4a2` is isolated to HTTP 429 retry paths under an unchanged `60/min` partner quota.
-(2) Incoming dispatch volume in `2026-10-12 00:00-06:00 UTC` was `1,420` jobs (mean `3.9/min`, peak `18/min`), matching baseline `2026-10-11` (`1,388` jobs, peak `19/min`).
+(1) From `Latency Pattern Isolation`, the p95 spike at `c81f4a2` is isolated to HTTP 429 retries under a `60/min` quota.
+(2) Dispatch volume on `2026-10-12` (`1,420` jobs, peak `18/min`) matched baseline `2026-10-11` (`1,388` jobs, peak `19/min`).
 (3) `git diff 9d0e11b..c81f4a2 -- worker/pool.py:34-48` changed `worker_concurrency` from `4` to `16`.
-(4) The same diff (`worker/pool.py:34-48`) replaced jittered exponential backoff (`base * 2**attempt + uniform(0, 1)`) with a fixed `0.5s` retry sleep.
-(5) Bounded search (`grep -rn "429\|retry_delay\|worker_concurrency" worker/`) returned zero other outbound notification dispatchers or retry handlers outside `worker/pool.py`.
-(6) Partner API response headers (`docs/partner-api.md:22`) expose only per-minute quota windows (`X-RateLimit-Limit: 60/min`) and zero sub-minute burst telemetry.
--- Holding incoming job volume and advertised partner quota constant, raising concurrency fourfold while removing backoff jitter produces synchronized retry bursts that trip a 60/min limit and stretch tail latency. A traffic surge is ruled out by (2) and an unrelated dispatcher is ruled out by (5); undocumented sub-minute partner burst throttling remains an unruled caveat because (6) shows partner headers expose only per-minute telemetry. --
-(7) So the concurrency and fixed-retry change in `worker/pool.py:34-48` (commit `c81f4a2`) is the primary cause of the p95 tail-latency spike, qualified by the unobservability of sub-minute partner burst limits.
+(4) The same diff (`worker/pool.py:34-48`) replaced jittered exponential backoff with fixed `0.5s` retry sleeps.
+(5) Bounded search (`grep -rn "429\|retry_delay\|worker_concurrency" worker/`) found `0` other outbound dispatchers outside `worker/pool.py`.
+(6) Partner API headers (`docs/partner-api.md:22`) expose only per-minute quotas and zero sub-minute burst telemetry.
+-- Holding load and quota constant, quadrupling concurrency without backoff jitter creates synchronized retry storms that trip a 60/min limit. Traffic surge is ruled out by (2) and alternate dispatchers by (5); undocumented sub-minute burst throttling remains an unruled caveat from (6). --
+(7) So the `worker/pool.py:34-48` concurrency and retry change (`c81f4a2`) is the primary cause of the p95 spike, qualified by unobservable sub-minute burst limits.
 
 ### Lowest-Risk Remediation
 
-(1) From `Latency Pattern Isolation`, baseline commit `9d0e11b` held p95 latency at `420 ms` across `n = 1,388` dispatches (`2026-10-11`).
-(2) From `Root Cause Diagnosis and Rival Check`, raising `worker_concurrency` (`4` -> `16`) and replacing jittered exponential backoff with fixed `0.5s` retries in `worker/pool.py:34-48` drives synchronized 429 retry spikes under `18/min` peak load (vs. `19/min` on baseline `9d0e11b`).
-(3) The service reliability standard (`docs/worker-sla.md:14`) mandates p95 delivery latency under `500 ms`, bounded jittered exponential backoff on HTTP 429, and outbound concurrency `<= 8` unless a client-side token bucket is deployed.
-(4) Bounded search (`grep -rn "token_bucket\|RateLimiter" worker/`) returned `0` matches, confirming no client-side token bucket exists in `worker/`.
--- Reverting the exact configuration drift to baseline settings that already met the reliability standard (`<= 8` concurrency and `420 ms` vs. the `500 ms` SLO) eliminates synchronized retry bursts without introducing new stateful infrastructure. A client-side token bucket would allow higher future throughput but adds state and rollout risk unnecessary at `18/min` peak load; because no post-revert load run has executed yet, staging load verification remains required to confirm p95 returns under the `500 ms` SLO. --
-(5) So the lowest-risk fix is to revert `worker/pool.py:34-48` to `worker_concurrency = 4` and jittered exponential backoff, followed by a staging load test to verify p95 recovery under `500 ms`.
+(1) From `Latency Pattern Isolation`, baseline `9d0e11b` held p95 at `420 ms` (`n = 1,388`, `2026-10-11`).
+(2) From `Root Cause Diagnosis and Rival Check`, `worker/pool.py:34-48` (`c81f4a2`) drives 429 retry spikes under `18/min` peak load (vs. `19/min` on `9d0e11b`).
+(3) Service SLA (`docs/worker-sla.md:14`) mandates p95 `< 500 ms`, jittered backoff on 429, and concurrency `<= 8` unless a client-side token bucket is deployed.
+(4) Bounded search (`grep -rn "token_bucket\|RateLimiter" worker/`) returned `0` matches in `worker/`.
+-- Reverting to baseline settings that already met the SLA (`<= 8` concurrency, `420 ms` vs. `500 ms` SLO) ends retry storms without new stateful infrastructure. A token bucket adds unnecessary rollout risk at `18/min` peak; staging load confirmation remains needed post-revert. --
+(5) So revert `worker/pool.py:34-48` to `worker_concurrency = 4` and jittered backoff, then run a staging load test to verify p95 `< 500 ms`.
 ```
 
-### Multi-Hop Coordinator Relay (Atomic Relayed Premises, Zero Bundling)
+### Multi-Hop Coordinator Relay (Separate Sourced Premises, Zero Bundling)
 
-Notice how each relayed finding stands as its own numbered premise citing both `verdict-84a1c2e0` and the primary locator it came from -- never bundled into an omnibus `"The same checked report confirmed X, Y, and Z"` sentence:
+Each relayed finding sits in its own premise citing `verdict-84a1c2e0` and its primary locator -- never bundled into an omnibus sentence:
 
 ```markdown
-**Original Ask (`req-12`):** Report the cause of the notification latency spike and recommended fix.
+**Original Ask (`req-12`):** Report the notification latency spike cause and recommended fix.
 
-**Main Conclusion:** Synchronized HTTP 429 retries from `worker/pool.py:34-48` (commit `c81f4a2`) caused the p95 spike (`420 ms` -> `4,850 ms`); reverting to `worker_concurrency = 4` and jittered exponential backoff is the recommended lowest-risk fix (pending staging load verification against the `500 ms` p95 SLO; sub-minute partner burst limits remain unobservable).
+**Main Conclusion:** Synchronized HTTP 429 retries from `worker/pool.py:34-48` (`c81f4a2`) caused the p95 spike (`420 ms` -> `4,850 ms`); reverting to `worker_concurrency = 4` and jittered backoff is the lowest-risk fix (pending staging verification vs. `500 ms` SLO; sub-minute burst limits unobservable).
 
 ### Relayed Diagnostic Findings
 
-(1) Production traces (`2026-10-12`, `n = 1,420`, via `verdict-84a1c2e0` PASS) showed p95 latency rose to `4,850 ms` from `420 ms` on baseline `9d0e11b` (`2026-10-11`, `n = 1,388`).
-(2) Grouping the `1,420` spans on `2026-10-12` by HTTP status (via `verdict-84a1c2e0` PASS) isolated 100% of `> 1,500 ms` spans (`n = 89`) to HTTP 429 retries.
-(3) Downstream partner headers (`2026-10-11` and `2026-10-12`, via `verdict-84a1c2e0` PASS) logged `X-RateLimit-Limit: 60/min` unchanged across both windows.
-(4) Dispatch-rate telemetry (`2026-10-12` vs. `2026-10-11`, via `verdict-84a1c2e0` PASS) showed peak incoming volume stayed flat (`18/min` vs. `19/min`).
-(5) `git diff 9d0e11b..c81f4a2 -- worker/pool.py:34-48` (via `verdict-84a1c2e0` PASS) raised `worker_concurrency` from `4` to `16`.
-(6) The same diff (`worker/pool.py:34-48`, via `verdict-84a1c2e0` PASS) replaced jittered exponential backoff with a fixed `0.5s` retry sleep.
-(7) Bounded search (`grep -rn "429\|retry_delay\|worker_concurrency" worker/`, via `verdict-84a1c2e0` PASS) found `0` other outbound dispatchers outside `worker/pool.py`.
-(8) `docs/worker-sla.md:14` (via `verdict-84a1c2e0` PASS) mandates p95 latency under `500 ms`, jittered exponential backoff, and concurrency `<= 8` unless a client-side token bucket is deployed.
-(9) Bounded search (`grep -rn "token_bucket\|RateLimiter" worker/`, via `verdict-84a1c2e0` PASS) returned `0` token-bucket matches in `worker/`.
-(10) `docs/partner-api.md:22` (via `verdict-84a1c2e0` PASS) exposes only per-minute quota headers, leaving sub-minute partner burst throttling unobservable.
-(11) `verdict-84a1c2e0` (PASS) disclosed no rule violations.
--- Verified child claims carrying individual primary locators, verdict ID, and original qualifiers relay upward without de novo source re-inspection, provided each fact stands on its own source so no unsourced assumption rides inside another statement and every caveat travels intact. Here (1)-(11) preserve each primary source separately, (11) discloses zero rule violations, and both the unobservable sub-minute caveat in (10) and pending staging verification against the `500 ms` SLO in (8) are preserved below. --
-(12) So `worker/pool.py:34-48` should revert to `worker_concurrency = 4` and jittered exponential backoff, followed by staging load verification against the `500 ms` p95 SLO, noting the unobservable sub-minute partner throttle caveat.
+(1) Production traces (`2026-10-12`, `n = 1,420`, `verdict-84a1c2e0` PASS) isolated all `> 1,500 ms` spans (`n = 89`; p95 `4,850 ms` vs. `420 ms` baseline) to HTTP 429 retries under flat peak load (`18/min` vs. `19/min`) and `60/min` quota.
+(2) `git diff 9d0e11b..c81f4a2 -- worker/pool.py:34-48` (`verdict-84a1c2e0` PASS) raised `worker_concurrency` (`4` -> `16`) and replaced jittered backoff with fixed `0.5s` retries.
+(3) Bounded grep across `worker/` (`verdict-84a1c2e0` PASS) returned `0` other dispatchers or token buckets.
+(4) `docs/worker-sla.md:14` (`verdict-84a1c2e0` PASS) mandates p95 `< 500 ms`, jittered backoff, and concurrency `<= 8` without a token bucket.
+(5) `docs/partner-api.md:22` (`verdict-84a1c2e0` PASS) exposes only per-minute quota headers, leaving sub-minute burst throttling unobservable.
+(6) `verdict-84a1c2e0` (PASS) disclosed zero rule violations.
+-- Verified child claims with individual primary locators, verdict ID, and qualifiers relay upward without substantive checking outside the message when each distinct source stands separately and caveats travel intact. (1)-(6) preserve each source, zero breaches, the sub-minute caveat (5), and pending staging confirmation (4). --
+(7) So revert `worker/pool.py:34-48` to `worker_concurrency = 4` and jittered backoff, then verify p95 `< 500 ms` in staging, noting the sub-minute throttle caveat.
 ```
 
 ## Realistic Subtle Defects & Minimal Remand Cures
 
-1. **Premise Smuggling (Bundled / Unsourced Claim)** -- Contrastive pair:
-   - _Defective (bundled)_: `(3) The same checked report (verdict-3a1b9c0d) found gateway logs recording account channel:beta because config/auth.env omits BETA_KEY.` (The checked report only observed `BETA_KEY` unset in `config/auth.env`; the logged account `channel:beta` is an unsourced assumption hitchhiking inside the same sentence.)
-   - _Broken out (exposes the gap)_: `(3) config/auth.env:12 (via verdict-3a1b9c0d PASS) omits BETA_KEY.` / `(4) Gateway logs record account channel:beta [assumed -- no primary log quote or verdict source].`
-   - _Minimal remand cure (`REVISE`)_: (b) break each assertion into its own numbered premise and either (c) supply primary log evidence for `(4)` or (a) drop/qualify the unsourced assumption.
-2. **Quiet Construct / Proxy Drift**: A worker quotes `0` errors in `app.log` and `HTTP 200` on `/health` after a database migration and concludes `"the checkout migration succeeded with zero customer impact."` Infrastructure liveness cannot observe silent payment drops.
-   - _Minimal remand cure (`REVISE`)_: (a) narrow the qualifier to service liveness, or (c) inspect post-migration order/payment completion counts against baseline.
-3. **Domain-Mismatched Authority**: A worker cites an offline batch-ETL tuning policy ("retry immediately with fixed 200ms sleeps") to justify removing backoff jitter on a third-party rate-limited API client.
-   - _Minimal remand cure (`REVISE`)_: (b) cite authority governing externally rate-limited APIs or bridge why batch-ETL rules transfer without causing retry storms.
-4. **Unbounded Evidence for an Exclusive Claim**: A worker inspects two failing requests in `us-east` (`n = 2`) and concludes `"only the new serializer causes timeouts across all regions."`
-   - _Minimal remand cure (`REVISE`)_: (a) narrow the claim to the two observed `us-east` traces, or (c) run a cross-region control comparison holding the serializer constant.
-5. **Diagnosis-to-Remedy Mismatch**: Block 1 diagnoses slow queries caused by missing composite indexes on read replicas; Block 2 recommends raising write-primary connection pool limits without bridging the two.
-   - _Minimal remand cure (`REVISE`)_: (b) align the remedy to the diagnosed replica index bottleneck or supply the missing bridge.
-6. **Bare Verdict-Relay Stub**: A coordinator writes `"(1) Worker passed verdict-9f2a1b3c PASS. So the design is approved."`
-   - _Minimal remand cure (`REVISE`)_: (b) break out and relay each checked observation with its primary locator, verdict ID, scope qualifiers, and disclosed rule violations.
+1. **Premise Smuggling**: _Defective_: `(3) Checked report (verdict-3a1b9c0d) found gateway logs recording channel:beta because config/auth.env omits BETA_KEY.` (`channel:beta` is unsourced.) _Split_: `(3) config/auth.env:12 (verdict-3a1b9c0d PASS) omits BETA_KEY.` / `(4) Gateway logs record channel:beta [assumed].` _Cure (`REVISE`)_: (b) split premises and (c) quote logs for `(4)` or (a) drop/qualify it.
+2. **Construct / Proxy Drift**: Quoting `0` `app.log` errors and `HTTP 200` on `/health` after a migration to claim `"zero customer impact"` confuses liveness with payment integrity. _Cure (`REVISE`)_: (a) narrow to liveness, or (c) check post-migration order counts vs. baseline.
+3. **Domain-Mismatched Authority**: Citing batch-ETL tuning ("fixed 200ms retries") to remove jitter on a rate-limited third-party API client. _Cure (`REVISE`)_: (b) cite rate-limited API authority or bridge why batch rules transfer.
+4. **Unbounded Exclusive Claim**: Inspecting `n = 2` `us-east` failures and claiming `"only the new serializer causes timeouts across all regions."` _Cure (`REVISE`)_: (a) narrow to those two traces, or (c) run a cross-region control.
+5. **Diagnosis-to-Remedy Mismatch**: Diagnosing missing read-replica indexes while recommending larger write-primary pools without bridging the two. _Cure (`REVISE`)_: (b) align remedy to replica indexes or add the bridge.
+6. **Bare Relay Stub**: Writing `"(1) Worker passed verdict-9f2a1b3c PASS. So the design is approved."` _Cure (`REVISE`)_: (b) relay each checked finding with primary locator, verdict ID, qualifiers, and disclosed breaches.
 
 ## Appealable Administrative-Law Verdict Reasons
 
-The templates below are for the `--reason-file` OTel audit record passed to `verdict.py`; sending a verdict or remand back to another agent is an inter-agent message and must use unfenced prose Argdown blocks only.
+Templates below are for the `--reason` / `--reason-file` OTel record passed to `verdict.py`; sending a verdict or remand to another agent uses unfenced prose Argdown blocks only.
 
-### Example PASS Reason
+### Example Low-Stakes / Read-Only PASS Reason (`--reason`)
+
+```text
+PASS on claim-3b7e20c1 (ask task-19: list hooks referencing retry_delay). Judicial review on the message alone (zero substantive checking outside it): bounded grep locator and 2 matching file:line paths answer the read-only lookup directly; zero material defects. Relayable: hooks/retry.py:14 and hooks/pool.py:88 reference retry_delay.
+```
+
+### Example High-Stakes Multi-Layer PASS Reason (`--reason-file`)
 
 ```text
 PASS on claim-84a1c2e0 (asks task-42/AC1 and task-42/AC2).
 
-Judicial review passes on the face of the record:
-- Latency Pattern Isolation: Premises (1)-(4) are atomic and quote exact trace windows, sample sizes (n=1,420 vs. n=1,388), p95/median splits, 429 isolation (89/89 spans > 1,500 ms), and unchanged partner quota headers; the inference validly narrows the anomaly to 429 retry paths without overclaiming.
-- Root Cause Diagnosis and Rival Check: Premises (1)-(6) break out the diff changes (worker/pool.py:34-48), peak job rates (19/min vs. 18/min), bounded grep across worker/, and per-minute-only header granularity (docs/partner-api.md:22). The Contrast Test rules out traffic bursts and alternate dispatchers while qualifying unobservable sub-minute limits.
-- Lowest-Risk Remediation: Premises (1)-(4) accurately cite each upstream block, anchor the remedy in docs/worker-sla.md:14, confirm 0 token-bucket matches, and note pending staging load verification.
-- Ask coverage, authority, and rules: Both AC1 and AC2 are answered from primary observations bearing the stakes; zero bundled unsourced premises or rule breaches.
+Judicial review passes on the message alone (zero substantive checking outside it):
+- Latency Pattern Isolation: Premises (1)-(4) quote trace windows, n=1,420 vs. n=1,388, p95/median splits, 429 isolation (89/89 > 1,500 ms), and unchanged partner quota; inference narrows the spike to 429 retries.
+- Root Cause & Rival Check: Premises (1)-(6) separate diff changes (worker/pool.py:34-48), peak rates (19/min vs. 18/min), bounded grep, and per-minute header limits (docs/partner-api.md:22). Contrast Test rules out bursts and other dispatchers while qualifying sub-minute limits.
+- Remediation & Compliance: Premises (1)-(4) anchor the revert in docs/worker-sla.md:14, confirm 0 token buckets, note pending staging verification, and answer AC1-AC2 with zero bundled unsourced premises or rule breaches.
 
-Relayable checked conclusions: worker/pool.py:34-48 (commit c81f4a2) caused the p95 429 tail-latency spike (subject to unobservable sub-minute partner limits); reverting to worker_concurrency=4 and jittered exponential backoff is the lowest-risk fix, pending staging load confirmation against the 500 ms p95 SLO.
+Relayable checked conclusions: worker/pool.py:34-48 (c81f4a2) caused the p95 429 spike (subject to unobservable sub-minute limits); reverting to worker_concurrency=4 and jittered backoff is the lowest-risk fix, pending staging confirmation under 500 ms.
 ```
 
-### Example REVISE (Remand) Reason
+### Example AMENDED Reason (`--reason` / `--reason-file`)
+
+```text
+AMENDED on claim-5c2a81d0 (ask task-31/AC1: verify unit test suite status after refactor).
+
+Accepted with deterministic amendment on the message alone (zero substantive checking outside it):
+- Quantifier Drift: Conclusion states "all tests pass", whereas premise (1) quotes pytest running only tests/auth/ and tests/billing/ (48 passed).
+- Amendment applied: Narrowed claim to "tests/auth/ and tests/billing/ pass (48 passed); remaining test directories unrun".
+- No outside facts added; remaining grounds hold.
+
+Relayable amended conclusion: tests/auth/ and tests/billing/ pass (48 passed); other test directories were not run in this check.
+```
+
+### Example REVISE (Remand) Reason (`--reason-file`)
 
 ```text
 REVISE on claim-91d0f4a2 (ask task-55/AC1: confirm checkout migration 014 succeeded with zero customer impact).
 
-Remanded to the originating agent on the face of the record (zero de novo verification performed):
-- Construct / Proxy Drift: Premises (1)-(2) quote only app.log error count (0) and HTTP 200 on /health, which prove process liveness rather than checkout transaction integrity or customer impact.
-- Unruled Rival Explanation: A broken checkout write path or silent validation drop leaves /health at 200 and app.log clean unless errors log there; nothing on the record rules this out.
-- Minimal remand cure: Load ida:premise-check and either (a) narrow the claim strictly to service liveness if transaction telemetry is out of reach, or (c) inspect primary post-migration checkout completion counts against baseline, quote the deciding counts and window inline, and resubmit solely in prose Argdown blocks.
+Remanded to the originating agent on the message alone (zero substantive checking outside it):
+- Construct / Proxy Drift: Premises (1)-(2) quote only 0 app.log errors and HTTP 200 on /health, proving liveness rather than checkout integrity or customer impact.
+- Unruled Rival: A broken checkout write path or silent validation drop leaves /health 200 and app.log clean; nothing on the record rules this out.
+- Minimal cure: Load ida:premise-check and either (a) narrow strictly to service liveness, or (c) quote primary post-migration checkout completion counts against baseline in prose Argdown blocks.
 
 Relayable checked conclusions: none.
 ```

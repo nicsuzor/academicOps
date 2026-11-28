@@ -620,7 +620,7 @@ def http_mcp_server():
 
 @pytest.mark.integration
 def test_search_the_pkb_sends_one_post_with_headers(http_mcp_server, monkeypatch, tmp_path):
-    """AC: default tool name is 'pkb_search' when PKB_MCP_TOOL_PREFIX is unset; one POST per search carrying x-session-id, active turn traceparent, #3009 tokens, and real user-agent."""
+    """AC: default tool name is 'pkb_search' when PKB_MCP_TOOL_PREFIX is unset; one POST per search carrying W3C traceparent and baggage in _meta and headers, tokens, and real user-agent, with no x-session-id or session_id arg."""
     tracer_dir = tmp_path / ".claude" / "tracer"
     tracer_dir.mkdir(parents=True, exist_ok=True)
     trace_id = "0123456789abcdef0123456789abcdef"
@@ -650,8 +650,10 @@ def test_search_the_pkb_sends_one_post_with_headers(http_mcp_server, monkeypatch
     assert len(http_mcp_server.requests) == 1
 
     req = http_mcp_server.requests[0]
-    assert req["headers"]["x-session-id"] == "s123"
+    assert "x-session-id" not in req["headers"]
     assert req["headers"]["traceparent"] == f"00-{trace_id}-{span_id}-01"
+    assert "session.id=s123" in req["headers"]["baggage"]
+    assert "prompt.id=" in req["headers"]["baggage"]
     assert req["headers"]["cf-access-client-id"] == "wid"
     assert req["headers"]["cf-access-client-secret"] == "wsec"
     assert not req["headers"]["user-agent"].startswith("Python-urllib")
@@ -666,11 +668,13 @@ def test_search_the_pkb_sends_one_post_with_headers(http_mcp_server, monkeypatch
     assert meta["io.modelcontextprotocol/protocolVersion"] == "2026-07-28"
     assert meta["io.modelcontextprotocol/clientCapabilities"] == {}
     assert meta["io.modelcontextprotocol/clientInfo"]["name"] == "academicOps"
+    assert meta["traceparent"] == f"00-{trace_id}-{span_id}-01"
+    assert meta["baggage"] == req["headers"]["baggage"]
     args = req["json"]["params"]["arguments"]
     assert args["query"] == "what are the axioms?"
     assert args["limit"] == 5
     assert args["detail"] == "snippet"
-    assert args["session_id"] == "s123"
+    assert "session_id" not in args
     assert "_session" not in args
 
 
@@ -746,8 +750,11 @@ def test_search_the_pkb_unauthenticated_when_credentials_unset(
     assert "cf-access-client-id" not in req["headers"]
     assert "cf-access-client-secret" not in req["headers"]
     assert "authorization" not in req["headers"]
-    assert req["headers"]["x-session-id"] == "s456"
+    assert "x-session-id" not in req["headers"]
+    assert "session.id=s456" in req["headers"]["baggage"]
     assert "traceparent" in req["headers"]
+    assert "session.id=s456" in req["json"]["params"]["_meta"]["baggage"]
+    assert "traceparent" in req["json"]["params"]["_meta"]
     assert not req["headers"]["user-agent"].startswith("Python-urllib")
 
 
@@ -1164,7 +1171,7 @@ def test_pkb_hydrate_zero_env_var_is_ignored():
 def test_search_the_pkb_sends_session_with_matching_prompt_id(
     http_mcp_server, monkeypatch, tmp_path
 ):
-    """AC3: The hook sends top-level session_id and preserves matching prompt_id in tracer state."""
+    """AC3: The hook sends W3C baggage with session.id and prompt.id and preserves matching prompt_id in tracer state."""
     tracer_dir = tmp_path / ".claude" / "tracer"
     tracer_dir.mkdir(parents=True, exist_ok=True)
     trace_id = "11112222333344445555666677778888"
@@ -1200,9 +1207,13 @@ def test_search_the_pkb_sends_session_with_matching_prompt_id(
 
     req = http_mcp_server.requests[0]
     args = req["json"]["params"]["arguments"]
+    meta = req["json"]["params"]["_meta"]
     assert args["query"] == "what is the session contract?"
-    assert args["session_id"] == "s-session-ac3"
+    assert "session_id" not in args
     assert "_session" not in args
+    assert "session.id=s-session-ac3" in meta["baggage"]
+    assert "prompt.id=prompt-trace-match-1" in meta["baggage"]
+    assert req["headers"]["baggage"] == meta["baggage"]
 
     # State file's current_trace must keep prompt_id
     updated_state = json.loads(state_file.read_text(encoding="utf-8"))
@@ -1212,7 +1223,7 @@ def test_search_the_pkb_sends_session_with_matching_prompt_id(
 def test_search_the_pkb_generates_matching_prompt_id_when_absent(
     http_mcp_server, monkeypatch, tmp_path
 ):
-    """AC3: When prompt_id is absent from payload, prompt_id is generated in tracer state and session_id is sent."""
+    """AC3: When prompt_id is absent from payload, prompt_id is generated in tracer state and propagated via W3C baggage."""
     tracer_dir = tmp_path / ".claude" / "tracer"
     tracer_dir.mkdir(parents=True, exist_ok=True)
     trace_id = "aaaabbbbccccddddaaaabbbbccccdddd"
@@ -1246,11 +1257,15 @@ def test_search_the_pkb_generates_matching_prompt_id_when_absent(
 
     req = http_mcp_server.requests[0]
     args = req["json"]["params"]["arguments"]
-    assert args["session_id"] == "s-no-prompt-id"
+    meta = req["json"]["params"]["_meta"]
+    assert "session_id" not in args
     assert "_session" not in args
+    assert "session.id=s-no-prompt-id" in meta["baggage"]
 
     updated_state = json.loads(state_file.read_text(encoding="utf-8"))
-    assert updated_state["current_trace"]["prompt_id"]
+    generated_pid = updated_state["current_trace"]["prompt_id"]
+    assert generated_pid
+    assert f"prompt.id={generated_pid}" in meta["baggage"]
 
 
 def test_search_the_pkb_injects_nothing_when_server_returns_empty_content(
@@ -1449,10 +1464,62 @@ def test_post_mcp_search_uses_root_phoenix_session_id_and_subagents_skip_hydrati
     assert len(http_mcp_server.requests) == 1
 
     req = http_mcp_server.requests[0]
-    assert req["headers"].get("x-session-id") == "root-sess-01"
+    assert "x-session-id" not in req["headers"]
+    meta = req["json"]["params"]["_meta"]
+    assert "session.id=root-sess-01" in meta["baggage"]
+    assert "agent.id=subagent-sess-42" in meta["baggage"]
+    assert req["headers"]["baggage"] == meta["baggage"]
+    assert meta["traceparent"] == f"00-{trace_id}-{span_id}-01"
     args = req["json"]["params"]["arguments"]
-    assert args["session_id"] == "root-sess-01"
+    assert "session_id" not in args
     assert "_session" not in args
+
+
+def test_post_mcp_search_appends_codemode_off_on_https_portal_urls(monkeypatch, tmp_path):
+    """AC-1.9: outbound HTTPS portal requests receive ?codemode=off when unset; HTTP and explicit params pass through unchanged."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    captured_urls: list[str] = []
+
+    def mock_urlopen(req, timeout=None):
+        captured_urls.append(req.full_url)
+
+        class MockResp:
+            status = 200
+
+            def read(self):
+                return json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "result": {"content": [{"type": "text", "text": "ok"}]},
+                    }
+                ).encode("utf-8")
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+        return MockResp()
+
+    cases = [
+        ("https://portal.example.org/mcp", "https://portal.example.org/mcp?codemode=off"),
+        (
+            "https://portal.example.org/mcp?foo=bar",
+            "https://portal.example.org/mcp?foo=bar&codemode=off",
+        ),
+        (
+            "https://portal.example.org/mcp?codemode=on",
+            "https://portal.example.org/mcp?codemode=on",
+        ),
+        ("http://pkb:8026/mcp", "http://pkb:8026/mcp"),
+    ]
+    with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+        for input_url, _expected in cases:
+            assert handlers._post_mcp_search(input_url, "query", session_id="s-url") == "ok"
+
+    assert captured_urls == [expected for _, expected in cases]
 
 
 @pytest.mark.parametrize(

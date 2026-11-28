@@ -1,47 +1,33 @@
 ---
-description: Sweep open pull requests across repositories in parallel, triage each against project merge policies, queue discrete next-step tasks without inline execution, and report every disposition.
+description: "Crew (needs GitHub access): triage every open pull request in one or more repositories, queue the next step for each, and report a disposition for all of them."
 tags:
   - wf-template
   - pr
   - sweep
   - triage
-title: PR Sweep Workflow
+title: PR sweep
 type: template
 ---
 
-## What this template does
+## What this step does
 
-Coordinates a parallel triage sweep across open pull requests in one or more repositories, evaluating each against project-local branch and merge policies, queuing discrete next-step tasks, and reporting a complete disposition table.
-
-## Input contract
-
-- Target repository list (or current repository context) with git-hosting access.
-- Project merge policies, base branch rules, and risk-tier definitions.
+Sorts open pull requests by what each needs next. It decides; it does not do the next step itself.
 
 ## Obligations
 
-1. **Enumerate and classify open PRs**: Query open pull requests across target repositories. Exclude active WIP drafts and automated release PRs (reserved for explicit release approval); include completed isolated-worker drafts awaiting verification and active feature PRs.
-2. **Evaluate and clump in parallel against project policy**: Fan out concurrently across open PRs:
-   - Verify base branch, freeze constraints, CI checks, three-lens review status, and approval authority; screen unreviewed titles and descriptions so defective PRs flag for closure before diff review.
-   - Group related PRs requiring maintainer approval into cohesive consolidated feature-branch clumps (`bundle/<slug>` or `feat/<slug>`), keeping zero-overlap urgent fixes as standalone hotfixes.
-3. **Decouple triage from execution**: Never merge into base inline, push fixes, or hand the user mechanical inspection or reading tasks ("read/check PR"). For each actionable PR, locate an existing open task (via the graph custodian or exact PR/branch metadata lookup -- never broad raw-text search) or create and queue a discrete follow-up task:
-   - _Unreviewed (including completed drafts awaiting verification)_: queue compliance description screen and three-lens diff review by independent agents.
-   - _Changes requested or feedback open_: queue agent task to address feedback on the branch.
-   - _Three-lens diff review passed and part of a consolidation clump_: queue task to merge into `bundle/<slug>`, close each absorbed donor PR in the same step with a link to the consolidated PR, and run the compliance description-only check (`## RBG Review: PASS`) without pre-approval rebase.
-   - _Green, reviewed, and awaiting required approval_: record `Blocked on Approval` for one-at-a-time user walkthrough (reaches the user only after independent review and checks are summarized with a concrete recommendation; do not queue rebase or conflict resolution).
-   - _Approved (or autonomous merge authorized)_: queue task to rebase onto base, resolve conflicts if any, run full three-lens combined-diff review, and merge.
-4. **Report dispositions and file closed summary**: Record an explicit disposition for every enumerated PR (`Queued for Review`, `Queued for Feedback`, `Queued for Conflicts`, `Queued for Landing`, `Blocked on Approval`, or `Excluded`), and file a closed sweep summary task listing all outstanding queued task IDs.
+1. **List**: open PRs in the target repositories, leaving out work-in-progress drafts and automated release PRs.
+2. **Classify each** against the repository's merge rules: needs review, needs its feedback addressed, ready and awaiting approval, or approved (or covered by a ruling) and ready to land.
+3. **Queue**: for each PR that needs agent work, find its open task by PR or branch, or create one. A PR awaiting approval is recorded as such, with its review summary and a recommendation, never handed to the user as something to read.
+4. **Report** a disposition for every PR listed.
 
 ## Must not
 
-- Must not hand the user mechanical inspection or reading tasks ("read/check PR"); `Blocked on Approval` reaches the user only after independent review and checks are summarized with a concrete recommendation.
-- Must not merge release PRs without explicit release approval, merge without required reviews/approvals, or queue rebase/conflict resolution before approval.
+Merge, push fixes or rebase inline; merge a release PR without release approval.
 
 ## Output contract
 
-- Complete sweep disposition report accounting for every enumerated PR with its status, next step, and queued task ID.
-- Closed summary task filed on the record listing all queued follow-up task IDs.
+A disposition for every PR, with the task id of each queued next step.
 
 ## When to include
 
-Periodic or on-demand triage across open pull requests in one or more repositories.
+Periodic or on-demand triage of open pull requests.

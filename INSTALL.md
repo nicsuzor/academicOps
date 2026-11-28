@@ -99,7 +99,7 @@ trace store in one batch.
 | `AOPS_GIT_CONFIG_GLOBAL` -- becomes session-scoped `GIT_CONFIG_GLOBAL` | `plugins/crew/hooks/handlers.py` `_isolate_credentials` | optional | optional | optional | optional | not set |
 | `AOPS_SURFACE` -- surface tag on PKB search requests | `plugins/crew/hooks/handlers.py` `_resolve_surface` | optional | optional | optional | optional | optional |
 | `AOPS_IMAGE_PLUGINS_VERSION`, `AOPS_IMAGE_STALE`, `AOPS_IMAGE_STALENESS_WARNING` -- baked-image metadata | `plugins/crew/hooks/handlers.py` `_resolve_plugin_version`, `session_start` | not set | not set | optional | not set | not set |
-| `AOPS_SESSION_POINTER_DIR` | `plugins/crew/hooks/handlers.py`, `plugins/ida/hooks/handlers.py` `_session_pointer_dir` | optional | optional | optional | optional | optional |
+| `AOPS_SESSION_POINTER_DIR` | `plugins/ida/hooks/handlers.py` `_session_pointer_dir` | optional | optional | optional | optional | optional |
 | `AOPS_HOOK_LOG_PATH` -- hook fire log | `lib/hooks/dispatch.py` `_log_fire` | optional | optional | optional | optional | optional |
 | `AOPS_SESSION_ID` -- written by `SessionStart` into `CLAUDE_ENV_FILE` | `plugins/crew/hooks/handlers.py`, `plugins/ida/hooks/handlers.py` `_export_session_id`; read by `lib/hooks/claude_code_tracer.py` `resolve_session_id` | not set | not set | not set | not set | not set |
 
