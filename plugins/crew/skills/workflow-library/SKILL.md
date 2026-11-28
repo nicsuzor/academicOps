@@ -1,6 +1,6 @@
 ---
 name: workflow-library
-description: Manage, inspect, author, edit, and retire composable workflow templates across project, PKB, and universal tiers. Use for workflow template library maintenance, authoring, and lifecycle operations. Exclude for assembling or composing workflows onto tasks (use /reify) or tracking running jobs (use harness progress tools).
+description: Manage, inspect, author, edit, and retire composable workflow templates across project, PKB, and universal tiers. Use for workflow template library maintenance, authoring, and lifecycle operations. Exclude for assembling or composing workflows onto tasks or in-session briefs, or tracking running jobs (use harness progress tools).
 ---
 
 # /workflow-library -- Composable Workflow Template Management

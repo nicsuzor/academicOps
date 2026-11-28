@@ -4,7 +4,7 @@ type: template
 id: wf-finish
 alias: [wf-finish]
 default: true
-description: "Worker: how a task ends -- output where the task says, acceptance ticked with evidence, one release status."
+description: "Worker: how a task ends -- output where the composed workflow and task specify, acceptance ticked with evidence, one release status."
 tags: [wf-template, finish, lifecycle, default]
 ---
 

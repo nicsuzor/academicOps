@@ -38,4 +38,4 @@ Never place data inside build output directories (`output/`, `_book/`, `_site/`,
 
 ## Currency standard
 
-Documentation reflects the actual current codebase. Never leave `TODO` or `TK` placeholders in committed research documentation. When code diverges from documentation, update documentation in the same commit.
+Documentation reflects the actual current codebase. Never leave `TODO` or `TK` placeholders in committed research documentation. When code diverges from documentation, update documentation as directed by the composed workflow (for example, in the same commit).

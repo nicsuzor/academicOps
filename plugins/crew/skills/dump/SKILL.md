@@ -18,11 +18,11 @@ Stage specific modified files (never `add -A`) and commit, noting partial state 
 
 ### 2. Retroactive Tasks (Interactive Sessions Only)
 
-When an interactive session edits repository files without an assigned task or recovers from a significant operational fault (outage, crashed daemon, credential failure, root-caused defect -- exempting routine health checks, status pings, and minor edits), mint a retroactive task (`classification: chore|implementation`, parented to its project or operational parent, 5-section body: `Goal`, `Deliverable`, `Scope`, `Acceptance criteria`, `Pointers`) and release it `done` with SHA or health-check evidence (routing code bugs as directed by the composed workflow). Isolated workers on assigned tasks never mint retroactive tasks: record containment breaches and release `partial` or `failed`.
+When task tracking applies under the composed workflow and an interactive session edits repository files without an assigned task or recovers from a significant operational fault (outage, crashed daemon, credential failure, root-caused defect -- exempting routine health checks, status pings, and minor edits), mint a retroactive task (`classification: chore|implementation`, parented to its project or operational parent, 5-section body: `Goal`, `Deliverable`, `Scope`, `Acceptance criteria`, `Pointers`) and release it `done` with SHA or health-check evidence (routing code bugs as directed by the composed workflow). Isolated workers on assigned tasks never mint retroactive tasks: record containment breaches and release `partial` or `failed`.
 
 ### 3. Capture Durable Facts & Repair Contradictions
 
-Offer settled durable facts (decisions, constraints, verified current-state findings, or KB corrections on a 6-month horizon; exclude exploratory thinking aloud) to the knowledge-base curation role with source pointers, or record them under `## Durable Facts` on the task record and inside `### Handover Disposition` when isolated.
+Offer settled durable facts (decisions, constraints, verified current-state findings, or KB corrections on a 6-month horizon; exclude exploratory thinking aloud) to the durable store or curation role directed by the composed workflow with source pointers, or record them under `Handover Disposition` (`Durable facts`) inside `## Report` when isolated.
 
 ### 4. Release Claimed Tasks (Children First)
 
@@ -46,7 +46,7 @@ Offer settled durable facts (decisions, constraints, verified current-state find
 
 ### 5. Workflow-Directed Summary Updates
 
-Update external summaries or daily notes only if and where the composed workflow specifies. When a workflow directs a summary update, follow its format and target; isolated workers carry the summary entry inside `### Handover Disposition` rather than mutating shared notes concurrently.
+Update external summaries or daily notes only if and where the composed workflow specifies. When a workflow directs a summary update, follow its format and target; isolated workers carry the summary entry under `Handover Disposition` (`Summary update`) inside `## Report` rather than mutating shared notes concurrently.
 
 ### 6. Next-Step Determination
 

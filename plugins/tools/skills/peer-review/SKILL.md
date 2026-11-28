@@ -54,7 +54,7 @@ Execute an independent cold check per `references/verification.md`:
 ### Stage 4: Final Check & Submit
 
 1. Execute pre-ready checklist: verbatim-quote grep, spelling check, and budget verification.
-2. Verification boundary: verification applies to committed artifacts; post-verification edits require re-verification.
+2. Verification boundary: verification attaches to the verified artifact snapshot; if text is edited or regenerated afterward, re-verify as the composed workflow directs.
 3. Academic reviews, assigns scores, and submits; record confirmation where the composed workflow and task specify.
 
 ## Scribe Mode (Collegial Review)

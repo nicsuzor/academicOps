@@ -50,7 +50,7 @@ Compile calibration (chosen tier, rounds, contextual standard, target altitude),
 | Reviewer | Issue | Feedback | Verdict / Disposition |
 | - | - | - | - |
 
-- Collapse concordant findings across reviewers while preserving each reviewer's verdict; where they differ, state the adopted disposition and why (recording reasons whenever an out-of-jurisdiction, taste-loop, fake-proxy, or wrong-standard finding is struck). Keep the strategic congruence verdict distinct even when concordant.
+- Collapse concordant findings across reviewers while preserving each reviewer's verdict; where they differ, state the adopted disposition and why (recording reasons whenever an out-of-jurisdiction, taste-loop, fake-proxy, or wrong-standard finding is struck). When strategic congruence is evaluated, keep its verdict distinct even when concordant.
 - Do not issue `REVISE` solely for unambiguous items already resolved cleanly in place, nor bounce exact deterministic fixes back when the reviewer or coordinator has permission and compliant instructions to commit them directly, nor over mere phrasing preferences.
 - **Overall verdict**: Any valid substantive specialist `FAIL` within jurisdiction forces `FAIL` (never downgrade or soften a valid substantive in-jurisdiction `FAIL`). Any remaining material `REVISE` forces `REVISE`. Otherwise `PASS`.
 

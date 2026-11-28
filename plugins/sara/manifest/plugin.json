@@ -4,7 +4,7 @@
   "clients": {
     "__base__": {
       "name": "sara",
-      "description": "Polecat dispatch only: the sara dispatcher agent and the dispatch skill that launches isolated polecat containers on reified tasks.",
+      "description": "Polecat dispatch only: the sara dispatcher agent and the dispatch skill that launches isolated polecat containers on tasks routed by the composed workflow.",
       "author": {
         "name": "Nicolas Suzor"
       },

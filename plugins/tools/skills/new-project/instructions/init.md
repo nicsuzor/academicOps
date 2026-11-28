@@ -4,7 +4,7 @@ Execute after discovery approval, using the user's choices for tooling and layou
 
 ## Operating Principles
 
-- **Check before creating**: Halt and prompt if the repository or PKB project node already exists -- never overwrite.
+- **Check before creating**: Halt and prompt (or report in headless workflows) if the repository or PKB project node already exists -- never overwrite.
 - **No rollback on partial failure**: Report what succeeded, what failed, and the exact retry command; log created assets for the final report.
 
 ## Step 1: Repository Setup

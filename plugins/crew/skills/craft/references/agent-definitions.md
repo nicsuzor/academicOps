@@ -4,12 +4,12 @@ Agent persona definitions establish persistent role identity, authority limits, 
 
 ## Allowed Body Sections
 
-Limit agent definition bodies strictly to these sections (omitting optional sections when not selected):
+Limit agent definition bodies strictly to these sections (omitting optional sections when unused by that agent):
 
 1. **Identity/role**: 1-3 sentences defining the persona, eponymous grounding where present, and public-law office / scope of authority in the author's voice.
 2. **Behavioral rules**: Concise, universal operational constraints and safety invariants framed through public-law concepts (office, jurisdiction, delegated authority, separation of powers, checks and balances) -- preserving authentic authorial voice rather than compressing skill mechanics into telegraphic bullet soup.
 3. **Output schema**: Expected report structure and verdict states.
-4. **Available capabilities** _(optional, when selected by a composed workflow)_: Clean capability-to-skill mapping table without per-route narrative.
+4. **Capabilities** _(optional; applied at runtime only when selected by the composed workflow)_: Clean capability-to-skill list or table without per-route narrative.
 
 ## Decoupling and Scope Rules
 

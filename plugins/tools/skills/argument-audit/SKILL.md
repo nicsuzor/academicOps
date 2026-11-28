@@ -5,7 +5,7 @@ description: Formally audit and stress-test a scholarly, legal, policy, or quali
 
 # Argument Audit
 
-Evaluate whether a scholarly, qualitative, mixed-methods, or policy argument is formally made out by stress-testing its **Chained Toulmin** structure against five diagnostic checks: **Term & Scope Alignment**, **Method-to-Construct Validity**, **Warrant & Backing Fit**, **The Contrast Test (Rival Explanations)**, and **Macro-Remedy Coherence**. Follow the Chained Toulmin Argdown grammar specification (and any guidance provided by the composed workflow) for grammar, metadata, tags, granularity levels, and parser validation.
+Evaluate whether a scholarly, qualitative, mixed-methods, or policy argument is formally made out by stress-testing its **Chained Toulmin** structure against five diagnostic checks: **Term & Scope Alignment**, **Method-to-Construct Validity**, **Warrant & Backing Fit**, **The Contrast Test (Rival Explanations)**, and **Macro-Remedy Coherence**. Follow the `argdown-toulmin` Chained Toulmin Argdown grammar specification (and any guidance provided by the composed workflow) for grammar, metadata, tags, granularity levels, and parser validation.
 
 ## When to Use
 

@@ -28,7 +28,7 @@ Every reviewer gets the same neutral brief: the commissioning ask verbatim with 
 
 - **Strategic fit**: is it the right problem, done in a way congruent with existing work and decisions.
 - **Rule compliance**: axioms, user and project rules, scope of authority, data boundaries.
-- **Quality**: does the real artifact meet its requirements and serve its audience well. Only when something audience-facing or testable was built.
+- **Quality**: does the real artifact meet its requirements and serve its audience well (when audience-facing or testable, as selected by the composed workflow).
 
 ## Stages
 

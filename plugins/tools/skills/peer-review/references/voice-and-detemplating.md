@@ -10,7 +10,7 @@ Convert verified notes into signable prose matching the reviewer's voice, and re
 
 ## Two Registers
 
-- **Prep register**: Granular line references, direct quotes, numerical checks, and raw impressions. Retained in reading notes and git history.
+- **Prep register**: Granular line references, direct quotes, numerical checks, and raw impressions. Retained in reading notes and the versioning mechanism the composed workflow and task specify.
 - **Final register**: Assertable prose the academic can stand behind from a single read without verifying isolated figures.
 
 Render positions faithfully and boldly. Raise phrasing or severity concerns in conversation rather than silently softening the critique.

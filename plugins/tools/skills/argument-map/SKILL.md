@@ -18,7 +18,7 @@ Produce three deliverables:
 
 ## Reconstruct & Integrate
 
-- **Grammar & extraction**: Follow the composed workflow for extraction sequencing, and write and validate against the Chained Toulmin Argdown grammar specification (grammar, metadata, relations, tags, parser validation).
+- **Grammar & extraction**: Follow the composed workflow for extraction sequencing, and write and validate against the `argdown-toulmin` Chained Toulmin Argdown grammar specification (grammar, metadata, relations, tags, parser validation).
 - **Match the text's structure**: Lead with the thesis, followed by one Argdown section per part in the text's order.
 - **Reconstruct charitably at supportable strength**: Supply unstated premises and warrants needed for validity as assumed items. When wording overstates the evidence (e.g. "veto" where evidence shows "sometimes limits"), narrow the label, preserve verbatim text in `source`, and record the narrowed reading as a decision.
 - **Tag open items & preserve author calls**: Define the tag legend in frontmatter (`#conflict` covers out-of-thesis branches too; preserve author categories as tags). Tag conflicts, scope choices, and cut-offs and state the question raised rather than deciding them for the author.

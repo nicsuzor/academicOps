@@ -32,4 +32,4 @@ Before writing code or models, establish and summarize the context (presenting t
 
 - **Empty or unmanaged repository**: Propose scaffolding baseline documentation (`instructions/research-documentation.md`) before running ad-hoc queries.
 - **Mature repository**: Adopt existing naming conventions and style patterns over generic defaults.
-- **Conflicting patterns**: Clarify with the researcher which pattern is authoritative, then record the decision.
+- **Conflicting patterns**: Clarify with the researcher in interactive workflows (or follow task/workflow instructions in headless workflows) which pattern is authoritative, then record the decision.

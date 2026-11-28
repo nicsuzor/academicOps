@@ -7,7 +7,7 @@ allowed-tools: [Skill, mcp__services__*]
 
 # /q -- Strategic Intake & Graph Placement
 
-Situate natural-language asks on the task graph: parented, connected, and valued at intake. Use the task pipeline for durable deliverables; let the composed workflow decide where plans, designs, and deliverables live. Answer in-turn questions and lookups directly without queueing tasks.
+Situate natural-language asks on the task graph: parented, connected, and valued at intake. When the composed workflow tracks durable deliverables as tasks, use the task pipeline; let the composed workflow decide whether tasks are opened and where plans, designs, and deliverables live. Answer in-turn questions and lookups directly without queueing tasks.
 
 ## 1. Search and Consolidate
 
@@ -49,7 +49,7 @@ When an ask spans multiple repositories, create strictly one repo-scoped task (`
    - `reference` / FYI: Update an existing blocking task or topic note (`update_body`); create zero user tasks.
    - `opportunity` / unagreed offer: Prepare one decision record (`status: "review"`, `assignee: "user"`, `classification: "opportunity"`, `deadline_class: "fake"` unless accepted) with summary, bold options inside the single body (`[Recommended]` rationale, draft reply, decline option).
    - `action` / accepted commitment: Queue agent groundwork (`queued`) or prepared draft.
-3. **Route captures**: Fold duplicates into existing tasks (`update_body` then `delete`), convert in place via `convert_document(id=<capture-id>, type="task", status="ready"|"inbox")` then `update_task`/`update_body`, synthesize into a canonical note (`update_body` or `create(type="knowledge")`) before deleting, or `delete` discards. Leave uncertain captures untouched for interactive review.
+3. **Route captures**: Fold duplicates into existing tasks (`update_body` then `delete`), convert in place via `convert_document(id=<capture-id>, type="task", status="ready"|"inbox")` then `update_task`/`update_body`, synthesize into a canonical note (`update_body` or `create(type="knowledge")`) before deleting, or `delete` discards. Leave uncertain captures untouched for workflow-directed handling.
 
 ## 5. Task Body & Output
 

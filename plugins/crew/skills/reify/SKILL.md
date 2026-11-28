@@ -9,7 +9,7 @@ Bind one situated node or directive to an executor class and current workflow te
 
 ## 0. Verify Placement
 
-A node must sit under an active parent container (`type: "task"`, never `type: "epic"`) wired per the Three-Purpose Taxonomy before workflow composition. Situate unplaced asks or unparented task IDs on the graph before composing workflows.
+When targeting a tracked task on the graph (rather than an untracked in-session brief), a node must sit under an active parent container (`type: "task"`, never `type: "epic"`) wired per the Three-Purpose Taxonomy before workflow composition; situate unplaced tasks on the graph before composing workflows for them.
 
 ## 1. Search Existing Graph
 
@@ -78,4 +78,4 @@ Fill the canonical structure:
 
 ## 4. Report
 
-Stop once tasks are written; the composed workflow decides execution handoff. Return each task's Title, ID, status, open `needs`, and composed workflows and skills.
+Stop once tasks or the composed execution brief are written; the composed workflow decides execution handoff. Return each task's Title, ID, status, open `needs` (when tracked), and composed workflows and skills.

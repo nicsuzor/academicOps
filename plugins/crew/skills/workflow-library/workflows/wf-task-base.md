@@ -13,7 +13,7 @@ Sets the minimum every task needs. Add nothing to a task that its ask or compose
 
 - **Goal**: one sentence naming the end state.
 - **Acceptance**: observable outcomes the worker itself delivers, one line each; never line numbers, mechanisms, or acts after hand-back (review, CI, merge, deployment, someone reading it).
-- **Output**: where the result goes. One of: the answer itself, in the final report; commits on the working branch; a file at a shared location the task names. Never only in the container's own scratch space.
+- **Output**: where the composed workflow and task specify (for example: the answer itself, in the final report; commits on the working branch; a file at a shared location the task names). Never only in the container's own scratch space.
 - **Report**: the final message states what was done and, for each acceptance item, the evidence (output, path, commit) or why it is unmet.
 
 ## Rules
