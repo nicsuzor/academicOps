@@ -7,7 +7,7 @@ tags: [base, task]
 
 ## What this step does
 
-Sets the minimum every task needs. Add nothing to a task that its ask or another selected template does not require: the work is reviewed separately once it is handed back, so the task carries no review, sign-off, approval or delivery steps of its own.
+Sets the minimum every task needs. Add nothing to a task that its ask or composed workflow does not require: review, sign-off, approval, or delivery steps run only when the composed workflow includes them, and output goes where the composed workflow and task specify.
 
 ## Task shape
 

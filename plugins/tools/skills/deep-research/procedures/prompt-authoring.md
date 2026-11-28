@@ -35,7 +35,7 @@ Use when cataloguing tools, datasets, or literature:
 
 ## Task Template
 
-Store authored prompts in the sourcing PKB probe task:
+When the composed workflow uses PKB probe tasks, store authored prompts in the sourcing probe task (otherwise deliver to the destination specified by the composed workflow and task):
 
 ````markdown
 # Probe: <goal>
@@ -56,7 +56,7 @@ Store authored prompts in the sourcing PKB probe task:
 
 - [ ] Run prompt in <tool>
 - [ ] Verify `Works Cited` and `Weakest links` sections exist prior to capture
-- [ ] Ingest via `deep-research` skill to `knowledge/<topic>/<slug>.md`
+- [ ] Ingest via `deep-research` skill to the workflow-specified destination (e.g., `knowledge/<topic>/<slug>.md` when PKB capture is selected)
 ````
 
 ## Iteration

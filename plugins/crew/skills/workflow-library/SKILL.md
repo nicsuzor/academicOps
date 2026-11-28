@@ -5,7 +5,7 @@ description: Manage, inspect, author, edit, and retire composable workflow templ
 
 # /workflow-library -- Composable Workflow Template Management
 
-Manage composable workflow templates (`type: template`) across three resolution tiers. Workflow composition onto tasks belongs exclusively to `/reify`.
+Manage composable workflow templates (`type: template`) across three resolution tiers so a workflow composer can select and bind them to tasks at run time.
 
 ## Tiers and Resolution
 
@@ -30,7 +30,7 @@ A project template ID is `<project>-<slug>`; strip `<project>-` to determine the
 ## Constraints
 
 - A slug also resolves through a template's `alias` list; retiring a template folds its slug into the survivor's `alias`.
-- Every description opens with who runs it: `Worker:` (fits a worker container: no PKB, plugins, push or publish), `Crew:` (needs privileged access), `Review:` (the separate review of handed-back work), or `Planning:` (shapes decomposition).
+- Every description opens with who runs it: `Worker:` (fits a worker container: no PKB, plugins, push or publish), `Crew:` (needs privileged access), `Review:` (review stages selected by the composed workflow), or `Planning:` (shapes decomposition).
 - Query tiers dynamically using metadata/summary detail for lists and full bodies only for `view`/`edit`; read universal templates with native file tools rather than shell loops.
 - Keep templates focused on stage contracts, obligations, and exit criteria without naming neighbour templates; leave operational method to skills.
 - Never mint tasks or dispatch work during library maintenance.

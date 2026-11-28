@@ -1,6 +1,6 @@
 ---
 name: new-project
-description: Scaffold a research project repository end to end -- repo creation, directory structure, git hygiene, CI/CD, documentation stubs, issue templates, and PKB registration in one pass, with defaults proposed for approval before writing. Use for "new project", "set up a project", "create a repo", "scaffold", "initialize project". Not for existing repos, provisioning credentials, or planning project work (use strategize).
+description: Scaffold a research project repository end to end -- repo creation, directory structure, git hygiene, CI/CD, documentation stubs, issue templates, and optional PKB registration in one pass, with defaults proposed for approval before writing. Use for "new project", "set up a project", "create a repo", "scaffold", "initialize project". Not for existing repos, provisioning credentials, or planning project work.
 ---
 
 # Project Scaffolding
@@ -19,7 +19,7 @@ Follow `instructions/init.md` to construct the repository:
 - Git hygiene: `.gitignore`, pre-commit hooks, immutable `data/raw/`.
 - Documentation stubs and issue templates.
 - Provision no secrets or credentials; report commands for the user to run.
-- Create no tasks; direct the user to `/crew:strategize`.
+- Defer follow-up planning and task creation to what the composed workflow directs.
 
 ## Report
 

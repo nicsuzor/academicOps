@@ -1,7 +1,7 @@
 ---
 alias:
   - wf-qa-visual
-description: "Review: how to capture and judge rendered visual output inside a quality review."
+description: "Review: how to capture and judge rendered visual output when selected by the composed workflow."
 id: wf-qa-visual
 status: ready
 tags:
@@ -14,7 +14,7 @@ type: template
 
 ## What this step does
 
-Fills the quality review's check for anything visual. The criteria and the verdict belong to the review it sits in.
+Captures and judges rendered visual output whenever the composed workflow selects visual inspection. Criteria and verdict handling follow the composed workflow and task.
 
 ## Capture
 
@@ -34,4 +34,4 @@ Cite the region of the image where each criterion holds or fails.
 
 ## When to include
 
-Inside a quality review of rendered output.
+Whenever the composed workflow selects visual inspection of rendered output.

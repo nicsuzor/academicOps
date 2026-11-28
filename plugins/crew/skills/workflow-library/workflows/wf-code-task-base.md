@@ -8,7 +8,7 @@ tags: [base, task, code, docs]
 
 ## What this step does
 
-Makes a change in one repository and leaves it committed on the working branch for separate review.
+Makes a change in one repository and leaves it committed on the working branch (or where the composed workflow and task specify); review, sign-off, approval, or delivery steps run only when the composed workflow includes them.
 
 ## Procedure
 

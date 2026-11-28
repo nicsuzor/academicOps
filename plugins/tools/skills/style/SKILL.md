@@ -49,6 +49,6 @@ Assemble the specification skeleton:
 ### 4. Test, Calibrate & Deliver
 
 1. Draft a 2--3 paragraph test piece using the draft specification on a relevant topic.
-2. Solicit author feedback: identify unnatural phrasing, over-weighted traits, and omitted habits.
-3. Update traits and anti-patterns; re-test until the author confirms authentic voice alignment.
-4. Deliver guide with instructions for writing agents and human editors.
+2. In interactive workflows, solicit author feedback on unnatural phrasing, over-weighted traits, and omitted habits; in headless workflows, self-audit against the writing samples and proceed per task instructions.
+3. Update traits and anti-patterns; in interactive workflows, re-test until the author confirms authentic voice alignment, or otherwise finalize where the composed workflow and task specify.
+4. Deliver the guide to the destination specified by the composed workflow and task, with usage instructions for downstream drafting and editing.

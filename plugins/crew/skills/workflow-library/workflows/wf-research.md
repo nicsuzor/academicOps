@@ -21,8 +21,8 @@ Answers a question from primary evidence: the code, data, docs, literature or ou
 
 ## Output contract
 
-The answer first, then only the evidence needed to check it. It goes in the final report, or in a document at the shared location the task names when it is long or meant to be kept.
+The answer first, then only the evidence needed to check it, placed where the composed workflow and task specify.
 
 ## When to include
 
-Any task whose job is to find something out. When the ask also wants something built, compose this with the repository-change base in the same task.
+Any task whose job is to find something out.

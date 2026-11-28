@@ -22,7 +22,7 @@ Establish voice calibration across iterative reviews:
 1. Draft final-register prose.
 2. Academic edits the draft.
 3. Compute diff between draft and final text.
-4. Codify recurring adjustments into `${ACA_DATA}/STYLE.md` or `{academic}-style.md`.
+4. Codify recurring adjustments where the composed workflow and task specify (for example, `${ACA_DATA}/STYLE.md` or `{academic}-style.md`).
 
 ## De-Templating Procedure (Whole-Round Pass)
 

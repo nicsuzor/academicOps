@@ -37,14 +37,17 @@ Create minimal files matching approved selections:
 
 ## Step 5: PKB Registration and Initial Push
 
-Search PKB for `<title or slug>`; if found, halt and prompt. Otherwise create the project node (`title: "Project: <title>"`, `type: "project"`, `body: "<description>"`, `tags: ["project-<slug>"]`, optional `parent: "<goal_id>"`).
+When PKB registration is directed by the composed workflow, search PKB for `<title or slug>`; if found, halt and prompt (or report in headless workflows). Otherwise create the project node (`title: "Project: <title>"`, `type: "project"`, `body: "<description>"`, `tags: ["project-<slug>"]`, optional `parent: "<goal_id>"`).
+
+Sync the environment and create the initial commit; run `git push -u origin main` when directed by the composed workflow and permitted by repository permissions:
 
 ```bash
 uv sync && pre-commit install
-git add -A && git commit -m "feat: initial project scaffolding" && git push -u origin main
+git add -A && git commit -m "feat: initial project scaffolding"
+# git push -u origin main  # run when directed by the composed workflow and repository permissions
 ```
 
-Register the new repository in the environment's project registry (and configure read-only secret mounts if container execution is used).
+When directed by the composed workflow and host permissions, register the new repository in the environment's project registry (and configure read-only secret mounts if container execution is used).
 
 ## Step 6: Report
 

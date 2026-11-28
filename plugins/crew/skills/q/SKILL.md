@@ -1,18 +1,18 @@
 ---
 name: q
 type: command
-description: Capture natural-language asks and situate them on the task graph as repo-scoped tasks under governing component or initiative parents, wire value-chain links on Strategic Value Carriers, and consolidate similar work. Use for strategic intake, task capture, and situating new asks. Exclude for starting workers on queued tasks (use /dispatch) or decomposing abstract objectives (use /decompose).
+description: Capture natural-language asks and situate them on the task graph as repo-scoped tasks under governing component or initiative parents, wire value-chain links on Strategic Value Carriers, and consolidate similar work. Use for strategic intake, task capture, and situating new asks. Exclude starting worker execution on queued tasks or expanding an objective into sub-objectives.
 allowed-tools: [Skill, mcp__services__*]
 ---
 
 # /q -- Strategic Intake & Graph Placement
 
-Situate natural-language asks on the task graph: parented, connected, and valued at intake. Use the task pipeline for any durable deliverable (workflows, instructions, specifications, code); capture plans, designs, and decisions on the graph rather than as plan files in repositories. Answer in-turn questions and lookups directly without queueing tasks.
+Situate natural-language asks on the task graph: parented, connected, and valued at intake. Use the task pipeline for durable deliverables; let the composed workflow decide where plans, designs, and deliverables live. Answer in-turn questions and lookups directly without queueing tasks.
 
-## 1. Search, Hydrate, and Consolidate
+## 1. Search and Consolidate
 
-1. **Custodian intake**: The PKB custodian (`pauli`) executes `/q` intake and related-work lookup via `/hydrate`. Non-custodian callers delegate `/q` on Turn 1 with only the verbatim ask and source identifiers, running zero pre-delegation lookups or bundled sweep work.
-2. **Search via hydrate**: Search open and closed tasks (`include_done: true`) plus related targets via `/hydrate` before minting any task.
+1. **Intake preparation**: Intake and related-work search run with the verbatim ask and source identifiers; avoid pre-delegation lookups or bundled sweep work when handing intake to the graph-maintenance role.
+2. **Search existing graph**: Search open and closed tasks (`include_done: true`) plus related targets before minting any task.
 3. **Evaluate outcome**:
    - _Consolidate or resume_: Extend an open or in-progress task covering the topic or repository scope rather than creating a duplicate.
    - _Reopen or close_: Reopen a closed task needing follow-up (`queued` for directed work, or `ready` only when held at an external or explicit user-reserved boundary). If the deliverable already shipped and the user is informed, mark tracking and work tasks `done` rather than holding them open to verify user installation or deployment.
@@ -20,7 +20,7 @@ Situate natural-language asks on the task graph: parented, connected, and valued
      - Only child tasks that are direct, separate steps of a parent task may be parented under a task; never create notes or other non-task node types under a task (link them via `[[wikilink]]` or `source` instead).
      - If an architectural subsystem lacks a component parent, create and weight it first; parent minor isolated tweaks under the project's general infrastructure parent with zero leaf `serves` edges.
      - Do groundwork first (PKB, then live repository host and traces): set `status: "queued"` for ready agent work, reserve `ready`/`inbox` for held or blocked items, and set `status: "review"` (`assignee: "user"`) only after groundwork and a reasoned recommendation are recorded and an invariant boundary or explicitly user-reserved pre-action hold remains.
-4. **Closed-loop delivery**: When a conversational ask needs results reported back on channel, add a dependent delivery task (`assignee: ida`, `needs: [<repo-task-id>]`, zero `serves` edges). Executor responsibility ends once shipped and reported.
+4. **Workflow-directed delivery**: When the composed workflow requires reporting results back on a channel, add a dependent delivery task (`needs: [<repo-task-id>]`, zero `serves` edges) as the workflow specifies. Executor responsibility ends once the task's own deliverables are shipped.
 
 ## 2. Multi-Repository Scoping
 

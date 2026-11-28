@@ -1,7 +1,7 @@
 ---
 title: Lookup
 type: template
-description: "Crew: PKB reads and writes, memory curation, graph operations and overlap checks -- straight to the custodian, with no task and no ceremony."
+description: "Crew: PKB reads and writes, memory curation, graph operations and overlap checks -- direct execution as routed by the composed workflow, with no task ceremony."
 tags: [workflow, lookup, pkb, graph, fast-path]
 ---
 
@@ -11,7 +11,7 @@ The direct path for knowledge-base work. Web, file and repository lookups are ou
 
 ## Requirements
 
-1. Send the request straight to the PKB custodian.
+1. Route execution and output placement as the composed workflow specifies.
 2. Create, queue or reify no task.
-3. No `/pull`, `/dump`, claim or release.
-4. Hand back in prose Argdown per `premise-check`, with the ask first and the deciding evidence quoted.
+3. Skip task claim and release ceremony.
+4. Hand back the result with the ask first and the deciding evidence quoted, placed where the composed workflow specifies.

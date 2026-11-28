@@ -8,9 +8,11 @@ description: Route research content between METHODOLOGY.md and methods/ files, a
 
 # Methods vs Methodology
 
-Separate conceptual research design from technical implementation. `METHODOLOGY.md` at project root explains the scholarly design to peer reviewers. Files in `methods/` provide reproducible implementation instructions for researchers and coders.
+Separate conceptual research design from technical implementation. By default (unless the project and composed workflow specify another layout and destination), `METHODOLOGY.md` at project root explains the scholarly design, and files in `methods/` provide reproducible implementation instructions for researchers and coders.
 
-## Routing guide
+## Default placement guide
+
+Use these default project locations unless the project or composed workflow specifies another layout and destination:
 
 | Content | Target document | Example |
 | - | - | - |

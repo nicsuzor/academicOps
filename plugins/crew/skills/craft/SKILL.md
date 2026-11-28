@@ -78,7 +78,7 @@ Hold operational content under the 150-200 line ceiling (target 30-80 lines):
 
 ## Quality Standards
 
-Every agent instruction, skill, persona definition, and subagent prompt must pass these six checks before merging:
+Every agent instruction, skill, persona definition, and subagent prompt satisfies these six quality standards (applied when review or verification is selected by the composed workflow):
 
 1. **Categorical generality (Categorical Imperative)**: Express rules covering the full class of situations; prohibit hyper-specific quotas, rigid interaction numbers, or one-off fixes.
 2. **Entity abstraction (Name the process, not the actor)**: Refer to the principal as "the user", never by a personal name; refer to collaborators by role or capability.

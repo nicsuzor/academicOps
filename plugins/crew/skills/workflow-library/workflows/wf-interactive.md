@@ -1,21 +1,21 @@
 ---
 title: Interactive session
 type: template
-description: "Crew: how an interactive session is run -- one outer task, delegation to internal delegates, checked seams, and one handover."
+description: "Crew: how an interactive session is run -- the composed workflow decides task tracking, role assignment, seam checks, output placement, and handover."
 tags: [workflow, interactive, in-session, delegation]
 ---
 
 ## What this step does
 
-Governs a session with the user on the other end. Pure lookups, graph operations and direct questions are answered without a task or `/dump`.
+Governs a session with the user on the other end. The composed workflow decides whether and how work is tracked in a task, how roles are assigned, where outputs go, and how the session hands over; pure lookups and direct questions need no task ceremony.
 
 ## Structure
 
-1. **One outer task** for the topic, placed and claimed via `/q` by the internal delegate before substantial work starts. The user-facing coordinator creates no tasks; downstream agents create none for the session's work. Work leaving for worker containers is placed via `/q`, reified by the custodian just before dispatch, and dispatched via `/dispatch`.
-2. **Delegation**: the user-facing coordinator delegates to an internal delegate, which routes to the custodian, a reviewer or the dispatcher as the work needs.
-3. **Checked seams**: inter-agent messages use prose Argdown and undergo judicial review on the message alone per `premise-check` (zero outside substantive checks; proportionate depth, accept unambiguous fixes with `AMENDED`, material remands only); any remaining material `REVISE` is fixed and re-checked before it moves on.
-4. **One handover**: only the user-facing coordinator runs `/dump`, when the outer task is complete.
+1. **Task tracking and placement**: the composed workflow decides whether an outer task is opened, who creates or claims it, where outputs are placed, and whether any work is prepared for worker containers.
+2. **Role assignment**: the composed workflow decides delegation and role routing rather than fixing an internal chain.
+3. **Seam review**: any inter-agent seam checks, review depth, and remediation loops run only as the composed workflow specifies.
+4. **Handover**: session close and release follow the composed workflow and the session's release mechanism.
 
 ## The brief
 
-The coordinator's brief quotes the ask verbatim with its message id and states the depth of effort it warrants. Closing reviews are named in the brief only when the stakes warrant them. The delegate returns a brief that misjudges effort or distorts the ask.
+The coordinator's brief quotes the ask verbatim with its message id and states the depth of effort it warrants. Closing reviews are included only when the composed workflow selects them. Any receiving party returns a brief that misjudges effort or distorts the ask.

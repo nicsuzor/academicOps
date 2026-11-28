@@ -1,17 +1,17 @@
 ---
 name: verify
-description: "Universal qualitative verification procedure evaluating qualitative excellence, audience empathy, and purpose fit across live rendered multimodal outputs when an audience-facing artifact is produced (exclude non-build lookups/diagnostics, linters, fact-checking, and functional QA)."
+description: "Universal qualitative verification procedure evaluating qualitative excellence, audience empathy, and purpose fit across live rendered multimodal outputs when selected by the composed workflow (exclude linters, fact-checking, and functional QA)."
 ---
 
 # Verify
 
-Universal qualitative verification procedure evaluating qualitative excellence, audience resonance, and purpose fit across live rendered multimodal outputs when an audience-facing artifact was built (never non-build lookups/diagnostics, linters, schema checks, primary-source fact-checking, or functional QA).
+Universal qualitative verification procedure evaluating qualitative excellence, audience resonance, and purpose fit across live rendered multimodal outputs whenever selected by the composed workflow (never linters, schema checks, primary-source fact-checking, or functional QA).
 
 ## 1. Scope, Audience & Contextual Standard
 
 Before inspecting details:
 
-1. **Confirm Audience-Facing Artifact:** Verify an audience-facing deliverable exists (document, specification, instruction file, plot, PDF, UI). Skip `verify` on non-build lookups, diagnostics, or pure plumbing with no audience-facing output.
+1. **Identify Target Deliverable:** Inspect the deliverable designated by the composed workflow (document, specification, instruction file, plot, PDF, UI, or rendered output).
 2. **Define Audience, Purpose & Contextual Standard:** Identify who meets the artifact, their cognitive context, and the outcome it serves. Apply any standard set by the user; otherwise evaluate against what is reasonable and appropriate for the audience, medium, and purpose in all the circumstances (e.g., `craft` for agent instructions, specification clarity, visual/cognitive clarity for plots/UI, scholarly polish for manuscripts -- never a rigid genre lookup table).
 3. **Direct Qualitative Judgment & Proportionality:**
    - _Internal / Routine / Defeasible:_ Brisk scannability and clarity check, deferring to reasonable stylistic and structural discretion.
@@ -34,7 +34,7 @@ Inspect the artifact in its rendered form as its audience meets it (never raw ma
 
 ## 4. Verdict Schema
 
-Internal agent-to-agent verification handbacks report **solely** in unfenced prose Argdown blocks per `ida:premise-check` (quoting deciding qualitative observations inline and reporting once when inspection completes; halt verbatim on any guard or harness refusal); structured Markdown headings (`### Reviewer Self-Fixes Applied`, `### Suggested Fixes`, `### Required Changes`) apply strictly to published PR/issue comments or user-facing documents.
+Deliver findings and verdicts (quoting deciding qualitative observations inline and reporting once when inspection completes; halting verbatim on any guard or harness refusal) in the format and destination the composed workflow specifies.
 
 - `PASS`: Achieves genuine excellence for its audience and purpose in all the circumstances (clarity, elegance, cognitive ease), respecting reasonable authorial discretion.
 - `REVISE`: Material structural, tonal, or presentation defects for its audience and purpose (never mere phrasing or stylistic preference).

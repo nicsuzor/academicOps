@@ -1,6 +1,6 @@
 ---
 name: "argument-map"
-description: "Build a reviewable map of a text's argument (thesis chapter, paper, submission, judgment, policy, or an author's own mind map). Gives a charitable reconstruction with every gap tagged, a list of what the argument still needs, and a readable overview page. Use for \"map the argument\", \"what does this argument still need\", \"show me how the chapter hangs together\", or for weaving an author's new notes or diagrams into an existing map. Not for plain extraction without assessment (use crew:argument-extraction), for a formal sufficiency audit without a page (use crew:argument-audit), or for mind maps and concept maps with no inferential structure (use tools:diagram)."
+description: "Build a reviewable map of a text's argument (thesis chapter, paper, submission, judgment, policy, or an author's own mind map). Gives a charitable reconstruction with every gap tagged, a list of what the argument still needs, and a readable overview page. Use for \"map the argument\", \"what does this argument still need\", \"show me how the chapter hangs together\", or for weaving an author's new notes or diagrams into an existing map. Not for plain extraction without assessment (use argument-extraction), for a formal sufficiency audit without a page (use argument-audit), or for mind maps and concept maps with no inferential structure (use tools:diagram)."
 ---
 
 # Argument Map
@@ -18,7 +18,7 @@ Produce three deliverables:
 
 ## Reconstruct & Integrate
 
-- **Grammar & extraction**: Extract first with `crew:argument-extraction`, then write and validate against `crew:argdown-toulmin` (grammar, metadata, relations, tags, parser validation).
+- **Grammar & extraction**: Follow the composed workflow for extraction sequencing, and write and validate against the Chained Toulmin Argdown grammar specification (grammar, metadata, relations, tags, parser validation).
 - **Match the text's structure**: Lead with the thesis, followed by one Argdown section per part in the text's order.
 - **Reconstruct charitably at supportable strength**: Supply unstated premises and warrants needed for validity as assumed items. When wording overstates the evidence (e.g. "veto" where evidence shows "sometimes limits"), narrow the label, preserve verbatim text in `source`, and record the narrowed reading as a decision.
 - **Tag open items & preserve author calls**: Define the tag legend in frontmatter (`#conflict` covers out-of-thesis branches too; preserve author categories as tags). Tag conflicts, scope choices, and cut-offs and state the question raised rather than deciding them for the author.
@@ -42,5 +42,5 @@ The rebuild runs through four stages:
 ## Check Before Delivering & Record
 
 - **Sound & complete**: Argdown parses cleanly; every `#missing` item has a reason; every quote has a locator; every source relation is drawn, noted on a box, or listed under skipped attributions; spot-check three links back to the text.
-- **Readable & faithful**: Inspect rendered SVGs and the overview page at desktop and mobile widths until visually clear, verify all prose cross-references match page order, and confirm the output answers the original ask.
-- **One home & rebuild-only**: Store the Argdown source and one-line-per-decision log in the map's PKB note. When creating the note with `pkb.create`, pass the source artefact's PKB-relative path in `source` (or set `parent` to a node in that sub-project) so it files in the sub-project directory rather than `notes/`. Never hand-edit derived renders; always rebuild from source.
+- **Readable & faithful**: When visual verification is part of the workflow or task, inspect rendered SVGs and the overview page at desktop and mobile widths until visually clear; verify all prose cross-references match page order and confirm the output answers the original ask.
+- **One home & rebuild-only**: Persist the Argdown source and one-line-per-decision log where the composed workflow and task specify; when creating a PKB note via `pkb.create`, pass the source artefact's PKB-relative path in `source` (or set `parent` to a node in that sub-project) so it files in the sub-project directory rather than `notes/`. Never hand-edit derived renders; always rebuild from source.

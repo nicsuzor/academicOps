@@ -20,13 +20,13 @@ Read existing project context before taking analytical actions to prevent duplic
 
 ## Pre-action discovery summary
 
-Before writing code or models, summarize the context to the user:
+Before writing code or models, establish and summarize the context (presenting to the user in interactive workflows, or recording in task context in headless workflows):
 
 - Substantive focus and active research questions.
 - Data sources, locations, and access patterns.
 - Inventory of existing models by layer (staging, intermediate, marts).
 - Transformation and presentation engines in use.
-- Ask for user direction on the specific task.
+- In interactive workflows, ask for user direction on the specific task; in headless workflows, proceed per task instructions.
 
 ## Ambiguous or incomplete context
 

@@ -7,7 +7,7 @@ description: Run academic research data analysis reproducibly -- research data i
 
 Core principles for reproducible empirical research pipelines. Pair with `dbt`, `streamlit`, or `python-viz` for engine-specific commands.
 
-**Checkpoint discipline**: Take ONE action at a time (chart, model, test), report results and interpretation, and yield to the user before continuing.
+**Checkpoint discipline**: Take ONE analytical step at a time (chart, model, test) and record results and interpretation; in interactive workflows, yield to the user before continuing, and in headless workflows, proceed per task instructions and what the composed workflow specifies.
 
 ## Academic research floor
 
@@ -67,8 +67,8 @@ Never query unmodelled raw sources directly; promote staging models to marts for
 ## Exploration and context discovery
 
 - Read context first: `README.md`, `data/README.md`, and transformation models. See `references/context-discovery.md`.
-- Explore clean patterns interactively (one step at a time); isolate data quality issues into reusable scripts in `analyses/`. See `instructions/exploratory-analysis.md`.
-- Follow documentation structure in `instructions/research-documentation.md`.
+- Explore clean patterns one step at a time; isolate data quality issues into reusable scripts in the project's analysis directory (default `analyses/`). See `instructions/exploratory-analysis.md`.
+- Follow the documentation layout specified by the project and composed workflow (default in `instructions/research-documentation.md`).
 
 ## Statistical methodology
 
@@ -78,4 +78,4 @@ Never query unmodelled raw sources directly; promote staging models to marts for
 - **Verify assumptions**: Run `scripts/assumption_checks.py` (`comprehensive_assumption_check()` or components `check_normality`, `check_homogeneity_of_variance`, `check_linearity`, `detect_outliers`) before reporting results.
 - **Report completely**: Provide effect sizes and confidence intervals in substantive units; never report p-values in isolation.
 - **Label exploratory passes**: Clearly distinguish confirmatory tests from exploratory subgroup analyses.
-- **Halt on ambiguities**: Clarify unstated covariates, model parameters, or missing-data strategies with the researcher.
+- **Halt on ambiguities**: Clarify unstated covariates, model parameters, or missing-data strategies before modelling (with the user in interactive workflows, or via task/handback escalation in headless workflows).

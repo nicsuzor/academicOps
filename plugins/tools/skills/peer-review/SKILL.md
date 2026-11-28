@@ -16,19 +16,19 @@ Prepare evidence-based, signable peer reviews matching current round criteria. T
 - **Human owns judgment**: Leave scores blank in drafts to comply with funding-body GenAI policies.
 - **No speculative outcomes**: Evaluate research feasibility without pre-committing what unrun studies will show.
 - **Route integrity breaches**: Report suspected research-integrity issues through official scheme channels, never in assessment text (see `references/platform-instructions.md`).
-- **Single living draft**: Maintain one draft per review versioned in git history; avoid duplicate version files.
+- **Single living draft**: Maintain one living draft per review at the location and versioning mechanism the composed workflow and task specify; avoid duplicate version files.
 - **Verbatim accuracy**: Use real, verified quotes or generic placeholders; never invent illustrative quotes.
 
 ## Five-Stage Workflow
 
-Serial execution is the default. Multi-review rounds may parallelise Stage 2 (isolated per-application verifiers) and Stage 3 (whole-set de-templating).
+Execution ordering and parallelisation (such as per-application Stage 2 verification or whole-set Stage 3 de-templating) follow what the composed workflow and task specify.
 
 ### Stage 0: Intake & Setup
 
 1. Capture metadata: scheme, round, application ID, candidate, title, role (`references/reviewer-roles.md`), deadline.
 2. Check conflicts of interest (CoI) once across participants and references; flag to academic for confirmation.
 3. Fetch scheme criteria, score bands, and character limits from the current handbook.
-4. Extract text to `${ACA_DATA}/reviews/{scheme}/{appid}/` via `pdftotext -layout`. Inspect tables and budgets directly from the PDF.
+4. Extract text to the workspace or output location the composed workflow and task specify (e.g., `${ACA_DATA}/reviews/{scheme}/{appid}/` when configured) via `pdftotext -layout`. Inspect tables and budgets directly from the PDF.
 
 ### Stage 1: PREP (Probe-Driven Draft)
 
@@ -55,13 +55,13 @@ Execute an independent cold check per `references/verification.md`:
 
 1. Execute pre-ready checklist: verbatim-quote grep, spelling check, and budget verification.
 2. Verification boundary: verification applies to committed artifacts; post-verification edits require re-verification.
-3. Academic reviews, assigns scores, and submits. Record confirmation in the task file.
+3. Academic reviews, assigns scores, and submits; record confirmation where the composed workflow and task specify.
 
 ## Scribe Mode (Collegial Review)
 
 For pre-submission drafts by colleagues:
 
-1. Store materials under `${ACA_DATA}/reviews/{author}/`.
+1. Store materials where the composed workflow and task specify (e.g., `${ACA_DATA}/reviews/{author}/` when configured).
 2. Map author questions to line numbers in reading notes (`references/reading-notes-format.md`).
 3. Budget feedback length to available time (lead with working elements, then one structural priority).
 4. Quote the colleague's text directly rather than paraphrasing into labels.
