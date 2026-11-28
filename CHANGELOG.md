@@ -1,5 +1,35 @@
 # Changelog
 
+## [1.15.0](https://github.com/nicsuzor/academicOps/compare/v1.14.0...v1.15.0) (2026-11-28)
+
+
+### Features
+
+* **observability:** migrate MCP prompt hydration to W3C baggage and retire session_id pointers ([28e06fc](https://github.com/nicsuzor/academicOps/commit/28e06fca8232ded0877096910a9ba5bfeaaf8b39))
+* **observability:** migrate MCP prompt hydration to W3C baggage and retire session_id pointers ([c1e78c5](https://github.com/nicsuzor/academicOps/commit/c1e78c528df34c53dc72d18b0992edb0325cf36c))
+* **premise-check,review:** add AMENDED verifier status and review fix-in-place rule ([9d61341](https://github.com/nicsuzor/academicOps/commit/9d613411544051589979919ea767c9bf96f61b5b))
+* **premise-check,workflows,review:** combine [#3773](https://github.com/nicsuzor/academicOps/issues/3773)/[#3771](https://github.com/nicsuzor/academicOps/issues/3771)/[#3769](https://github.com/nicsuzor/academicOps/issues/3769), add AMENDED status, and authorize reviewer in-place fixes ([3d175fd](https://github.com/nicsuzor/academicOps/commit/3d175fd4fc93ceb51edaeb6228f257f31f5a1182))
+
+
+### Bug Fixes
+
+* **observability:** address compliance and strategic-fit review findings ([dab245d](https://github.com/nicsuzor/academicOps/commit/dab245d4ed419572108d0117e0f0329e2383e7d8))
+* **premise-check:** restore proportionality and bar substantive checking ([a7f5472](https://github.com/nicsuzor/academicOps/commit/a7f5472599389337cb78753ecf7faf6df29d1aab))
+* **review:** clarify proportionate axiom carve-out and improve scannability ([ef5129d](https://github.com/nicsuzor/academicOps/commit/ef5129d58cb34cab61869c6502456632e5e25b48))
+
+
+### Code Refactoring
+
+* **crew,sara:** drop Ida's verification machinery from shared workflows ([c4d4dc4](https://github.com/nicsuzor/academicOps/commit/c4d4dc42ceb8e706fe69129105f7713b10d00f5f))
+* **crew,sara:** drop Ida's verification machinery from shared workflows, skills and agents ([c5abc71](https://github.com/nicsuzor/academicOps/commit/c5abc71402ea16c718f3407e85f0d0a3773dace6))
+* **plugins:** remove hardcoded review and routing decisions ([#3779](https://github.com/nicsuzor/academicOps/issues/3779)) ([48ec915](https://github.com/nicsuzor/academicOps/commit/48ec9152f11c995e0a1aa3b5addeb18ce547ba2b))
+* **workflows:** slim workflow library; no review, test or delivery ceremony in work tasks ([0524457](https://github.com/nicsuzor/academicOps/commit/052445750d77d755c1f3693c6baee19820df9550))
+
+
+### Documentation
+
+* **specs:** revise draft spec for in-session workflow execution ([#3778](https://github.com/nicsuzor/academicOps/issues/3778)) ([42c6f55](https://github.com/nicsuzor/academicOps/commit/42c6f5572396b3b69897fd975d61fdb43b8f6871))
+
 ## [1.14.0](https://github.com/nicsuzor/academicOps/compare/v1.13.2...v1.14.0) (2026-11-28)
 
 ### Features
