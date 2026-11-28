@@ -31,6 +31,7 @@ import os
 import statistics
 import sys
 import time
+import urllib.parse
 import urllib.request
 import uuid
 from dataclasses import asdict, dataclass, field
@@ -139,6 +140,22 @@ def _resolve_session_id() -> str:
 
 
 def _call_pkb_search(url: str, headers: dict[str, str], session_id: str, arguments: dict) -> str:
+    baggage_val = f"session.id={urllib.parse.quote(session_id, safe='')}"
+    parsed = urllib.parse.urlsplit(url)
+    target_url = url
+    if parsed.scheme == "https":
+        query_pairs = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+        if not any(k == "codemode" for k, _ in query_pairs):
+            query_pairs.append(("codemode", "off"))
+            target_url = urllib.parse.urlunsplit(
+                (
+                    parsed.scheme,
+                    parsed.netloc,
+                    parsed.path,
+                    urllib.parse.urlencode(query_pairs),
+                    parsed.fragment,
+                )
+            )
     req_headers = {
         "User-Agent": "academicOps/0.10 (measure-pkb-injection)",
         "Content-Type": "application/json",
@@ -146,7 +163,7 @@ def _call_pkb_search(url: str, headers: dict[str, str], session_id: str, argumen
         "MCP-Protocol-Version": "2026-07-28",
         "Mcp-Method": "tools/call",
         "Mcp-Name": "pkb_search",
-        "x-session-id": session_id,
+        "baggage": baggage_val,
         **headers,
     }
     payload = {
@@ -155,7 +172,7 @@ def _call_pkb_search(url: str, headers: dict[str, str], session_id: str, argumen
         "method": "tools/call",
         "params": {
             "name": "pkb_search",
-            "arguments": {**arguments, "session_id": session_id},
+            "arguments": dict(arguments),
             "_meta": {
                 "io.modelcontextprotocol/protocolVersion": "2026-07-28",
                 "io.modelcontextprotocol/clientCapabilities": {},
@@ -163,11 +180,12 @@ def _call_pkb_search(url: str, headers: dict[str, str], session_id: str, argumen
                     "name": "academicOps",
                     "version": "0.10",
                 },
+                "baggage": baggage_val,
             },
         },
     }
     req = urllib.request.Request(
-        url, data=json.dumps(payload).encode("utf-8"), headers=req_headers, method="POST"
+        target_url, data=json.dumps(payload).encode("utf-8"), headers=req_headers, method="POST"
     )
     with urllib.request.urlopen(req, timeout=15) as resp:
         raw_body = resp.read().decode("utf-8", errors="replace")
@@ -233,12 +251,12 @@ async def _one_search(
 def _resolve_mcp_headers() -> dict[str, str]:
     """Resolve MCP headers using the hook's own header resolution logic."""
     repo_root = Path(__file__).resolve().parent.parent
-    hooks_dir = repo_root / "plugins" / "ida" / "hooks"
+    hooks_dir = repo_root / "plugins" / "crew" / "hooks"
     if str(hooks_dir) not in sys.path:
         sys.path.insert(0, str(hooks_dir))
     import importlib.util
 
-    spec = importlib.util.spec_from_file_location("ida_pkb_handlers", hooks_dir / "handlers.py")
+    spec = importlib.util.spec_from_file_location("crew_pkb_handlers", hooks_dir / "handlers.py")
     if spec and spec.loader:
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)

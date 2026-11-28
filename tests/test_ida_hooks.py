@@ -903,11 +903,12 @@ def test_agy_session_start_renders_metadata_system_message(monkeypatch: pytest.M
     assert "plugins: v1.0-rc10" in sys_text
     assert "session: agy-sess-123" in sys_text
 
-    # Additional instructions delivered via ephemeralMessage
+    # Additional instructions delivered via ephemeralMessage without retired session_id pointer
     if len(steps) > 1:
         eph_step = steps[1]
         assert "ephemeralMessage" in eph_step
-        assert crew_handlers.PKB_SESSION_POINTER in eph_step["ephemeralMessage"]
+        assert "# crew plugin" in eph_step["ephemeralMessage"]
+        assert "Pass active `session_id`" not in eph_step["ephemeralMessage"]
 
 
 @pytest.mark.parametrize(
@@ -996,9 +997,8 @@ def test_render_agy_formats_system_message_and_ephemeral_message():
     ("plugin", "hooks_dir", "pointer_name"),
     [
         (handlers, IDA_HOOKS, "PREMISE_CHECK_POINTER"),
-        (crew_handlers, CREW_HOOKS, "PKB_SESSION_POINTER"),
     ],
-    ids=["ida", "crew"],
+    ids=["ida"],
 )
 def test_session_start_followed_by_user_prompt_submit_emits_pointer_once(
     plugin,
@@ -1008,7 +1008,7 @@ def test_session_start_followed_by_user_prompt_submit_emits_pointer_once(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ):
-    """AC1: each plugin's pointer is emitted at SessionStart and not repeated on UserPromptSubmit."""
+    """AC1: ida's premise-check pointer is emitted at SessionStart and not repeated on UserPromptSubmit."""
     from dispatch import normalize
 
     monkeypatch.delenv("CLAUDE_ENV_FILE", raising=False)
@@ -1037,6 +1037,23 @@ def test_session_start_followed_by_user_prompt_submit_emits_pointer_once(
     prompt_res = plugin.user_prompt_submit(prompt_ctx)
     if prompt_res is not None:
         assert pointer not in prompt_res.inject_text
+
+
+def test_crew_session_start_omits_retired_pkb_session_pointer(monkeypatch: pytest.MonkeyPatch):
+    """Crew SessionStart no longer emits a manual MCP session_id pointer."""
+    monkeypatch.delenv("CLAUDE_ENV_FILE", raising=False)
+    monkeypatch.setenv("PKB_MCP_URL", "http://localhost:8000")
+    assert not hasattr(crew_handlers, "PKB_SESSION_POINTER")
+    ctx = HookContext(
+        client="claude",
+        event="SessionStart",
+        session_id="sess-no-pointer",
+        hooks_dir=CREW_HOOKS,
+    )
+    res = crew_handlers.session_start(ctx)
+    assert res is not None
+    assert "session: sess-no-pointer" in res.inject_text
+    assert "Pass active `session_id`" not in res.inject_text
 
 
 def test_session_start_injects_only_workspace_core_md(

@@ -80,8 +80,7 @@ hook's inherited environment: `CLAUDE_CODE_IS_COWORK` set to `1` or `true`, or
 `CLAUDE_CODE_ENTRYPOINT` set to a Cowork entrypoint (`local-agent`,
 `local_agent`, `remote_cowork`, `remote_cowork_trigger`). Every other surface
 -- the CLI, the desktop app's Code tab, cloud sessions, agy -- runs normally.
-Plugin hooks never rewrite or inject MCP tool-call inputs; agents pass
-`session_id` explicitly in tool arguments where accepted.
+Plugin hooks never rewrite or inject MCP tool-call inputs, and agents never pass caller-correlation `session_id` tool arguments; programmatic HTTP callers propagate W3C `traceparent` and `baggage` in `params._meta` and HTTP headers while client hook tracers own session grouping for Code Mode calls.
 
 | Plugin | Events registered | What it's for |
 | - | - | - |
