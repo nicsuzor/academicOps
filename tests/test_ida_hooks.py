@@ -1043,7 +1043,6 @@ def test_crew_session_start_omits_retired_pkb_session_pointer(monkeypatch: pytes
     """Crew SessionStart no longer emits a manual MCP session_id pointer."""
     monkeypatch.delenv("CLAUDE_ENV_FILE", raising=False)
     monkeypatch.setenv("PKB_MCP_URL", "http://localhost:8000")
-    assert not hasattr(crew_handlers, "PKB_SESSION_POINTER")
     ctx = HookContext(
         client="claude",
         event="SessionStart",

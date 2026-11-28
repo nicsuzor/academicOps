@@ -1475,21 +1475,51 @@ def test_post_mcp_search_uses_root_phoenix_session_id_and_subagents_skip_hydrati
     assert "_session" not in args
 
 
-def test_post_mcp_search_appends_codemode_off_on_https_portal_urls():
-    """AC-1.9: HTTPS portal URLs receive ?codemode=off when unset; HTTP and explicit params stay untouched."""
-    assert (
-        handlers._with_codemode_off("https://portal.example.org/mcp")
-        == "https://portal.example.org/mcp?codemode=off"
-    )
-    assert (
-        handlers._with_codemode_off("https://portal.example.org/mcp?foo=bar")
-        == "https://portal.example.org/mcp?foo=bar&codemode=off"
-    )
-    assert (
-        handlers._with_codemode_off("https://portal.example.org/mcp?codemode=on")
-        == "https://portal.example.org/mcp?codemode=on"
-    )
-    assert handlers._with_codemode_off("http://pkb:8026/mcp") == "http://pkb:8026/mcp"
+def test_post_mcp_search_appends_codemode_off_on_https_portal_urls(monkeypatch, tmp_path):
+    """AC-1.9: outbound HTTPS portal requests receive ?codemode=off when unset; HTTP and explicit params pass through unchanged."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    captured_urls: list[str] = []
+
+    def mock_urlopen(req, timeout=None):
+        captured_urls.append(req.full_url)
+
+        class MockResp:
+            status = 200
+
+            def read(self):
+                return json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "result": {"content": [{"type": "text", "text": "ok"}]},
+                    }
+                ).encode("utf-8")
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+        return MockResp()
+
+    cases = [
+        ("https://portal.example.org/mcp", "https://portal.example.org/mcp?codemode=off"),
+        (
+            "https://portal.example.org/mcp?foo=bar",
+            "https://portal.example.org/mcp?foo=bar&codemode=off",
+        ),
+        (
+            "https://portal.example.org/mcp?codemode=on",
+            "https://portal.example.org/mcp?codemode=on",
+        ),
+        ("http://pkb:8026/mcp", "http://pkb:8026/mcp"),
+    ]
+    with patch("urllib.request.urlopen", side_effect=mock_urlopen):
+        for input_url, _expected in cases:
+            assert handlers._post_mcp_search(input_url, "query", session_id="s-url") == "ok"
+
+    assert captured_urls == [expected for _, expected in cases]
 
 
 @pytest.mark.parametrize(

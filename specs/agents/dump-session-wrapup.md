@@ -69,9 +69,9 @@ As the user picking up after a completed or interrupted session, I want un-inven
 
 ### US-6 Handover block session traceability
 
-As a framework auditor investigating execution history, I want the session identifier printed in the handover block and task release call, so that every handover report links directly to its generating session logs and OpenTelemetry traces.
+As a framework auditor investigating execution history, I want the session identifier printed in the handover block, so that every handover report links directly to its generating session logs and OpenTelemetry traces.
 
-- **AC-6.1 (Explicit session ID in handover header and release call)**: Given any execution of `dump`, when the skill releases claimed tasks via `pkb_release_task` and emits its structured handover block, then it passes the active `session_id` in the release payload and prints the session identifier directly in the handover heading (`## Handover: <agent> <session-id / conversation-id>`).
+- **AC-6.1 (Explicit session ID in handover header)**: Given any execution of `dump`, when the skill releases claimed tasks via `pkb_release_task` and emits its structured handover block, then it prints the session identifier directly in the handover heading (`## Handover: <agent> <session-id / conversation-id>`) without passing a custom `session_id` correlation argument on `pkb_release_task`.
 
 ## Shared interface contract
 

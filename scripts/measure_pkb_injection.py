@@ -2,7 +2,7 @@
 """Measurement harness for the pkb `UserPromptSubmit` injection hook.
 
 Answers two questions with numbers, not impression, before anyone touches
-`plugins/ida/hooks/handlers.py`:
+`plugins/crew/hooks/handlers.py`:
 
 1. **Backend search latency and payload size** — timed directly against the
    live PKB MCP server at `$PKB_MCP_URL`, the endpoint the hook searches.
@@ -31,11 +31,11 @@ import os
 import statistics
 import sys
 import time
-import urllib.parse
 import urllib.request
 import uuid
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from types import ModuleType
 
 # --------------------------------------------------------------------------
 # Fixed, versioned prompt set. Both families are turns the user plausibly types;
@@ -139,30 +139,48 @@ def _resolve_session_id() -> str:
     )
 
 
+_CREW_HANDLERS_MOD: ModuleType | None = None
+
+
+def _load_crew_handlers() -> ModuleType | None:
+    """Load `plugins/crew/hooks/handlers.py` once to reuse canonical MCP helpers."""
+    global _CREW_HANDLERS_MOD
+    if _CREW_HANDLERS_MOD is not None:
+        return _CREW_HANDLERS_MOD
+    repo_root = Path(__file__).resolve().parent.parent
+    hooks_dir = repo_root / "plugins" / "crew" / "hooks"
+    lib_hooks_dir = repo_root / "lib" / "hooks"
+    for p in (hooks_dir, lib_hooks_dir):
+        if str(p) not in sys.path:
+            sys.path.insert(0, str(p))
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("crew_pkb_handlers", hooks_dir / "handlers.py")
+    if spec and spec.loader:
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        _CREW_HANDLERS_MOD = mod
+        return mod
+    return None
+
+
 def _call_pkb_search(url: str, headers: dict[str, str], session_id: str, arguments: dict) -> str:
-    baggage_val = f"session.id={urllib.parse.quote(session_id, safe='')}"
-    parsed = urllib.parse.urlsplit(url)
-    target_url = url
-    if parsed.scheme == "https":
-        query_pairs = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
-        if not any(k == "codemode" for k, _ in query_pairs):
-            query_pairs.append(("codemode", "off"))
-            target_url = urllib.parse.urlunsplit(
-                (
-                    parsed.scheme,
-                    parsed.netloc,
-                    parsed.path,
-                    urllib.parse.urlencode(query_pairs),
-                    parsed.fragment,
-                )
-            )
+    crew_mod = _load_crew_handlers()
+    if crew_mod is None:
+        raise RuntimeError("Could not load plugins/crew/hooks/handlers.py")
+    target_url = crew_mod._with_codemode_off(url)
+    tp = crew_mod._resolve_tracer_traceparent(session_id)
+    baggage_val = crew_mod._format_w3c_baggage({"session.id": session_id})
+    prefix = os.environ.get("PKB_MCP_TOOL_PREFIX", "pkb_")
+    tool_name = f"{prefix}search"
     req_headers = {
         "User-Agent": "academicOps/0.10 (measure-pkb-injection)",
         "Content-Type": "application/json",
         "Accept": "application/json, text/event-stream",
         "MCP-Protocol-Version": "2026-07-28",
         "Mcp-Method": "tools/call",
-        "Mcp-Name": "pkb_search",
+        "Mcp-Name": tool_name,
+        "traceparent": tp,
         "baggage": baggage_val,
         **headers,
     }
@@ -171,7 +189,7 @@ def _call_pkb_search(url: str, headers: dict[str, str], session_id: str, argumen
         "id": 1,
         "method": "tools/call",
         "params": {
-            "name": "pkb_search",
+            "name": tool_name,
             "arguments": dict(arguments),
             "_meta": {
                 "io.modelcontextprotocol/protocolVersion": "2026-07-28",
@@ -180,6 +198,7 @@ def _call_pkb_search(url: str, headers: dict[str, str], session_id: str, argumen
                     "name": "academicOps",
                     "version": "0.10",
                 },
+                "traceparent": tp,
                 "baggage": baggage_val,
             },
         },
@@ -250,18 +269,9 @@ async def _one_search(
 
 def _resolve_mcp_headers() -> dict[str, str]:
     """Resolve MCP headers using the hook's own header resolution logic."""
-    repo_root = Path(__file__).resolve().parent.parent
-    hooks_dir = repo_root / "plugins" / "crew" / "hooks"
-    if str(hooks_dir) not in sys.path:
-        sys.path.insert(0, str(hooks_dir))
-    import importlib.util
-
-    spec = importlib.util.spec_from_file_location("crew_pkb_handlers", hooks_dir / "handlers.py")
-    if spec and spec.loader:
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        if hasattr(mod, "_resolve_mcp_headers"):
-            return mod._resolve_mcp_headers()
+    mod = _load_crew_handlers()
+    if mod is not None and hasattr(mod, "_resolve_mcp_headers"):
+        return mod._resolve_mcp_headers()
     return {}
 
 

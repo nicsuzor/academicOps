@@ -15,7 +15,7 @@ As a platform operator, I want custom MCP servers and programmatic HTTP callers 
 
 - **AC-1.1** Given a tool call carrying W3C Trace Context (`traceparent`, `tracestate`) and W3C Baggage (`baggage: session.id=<id>,agent.id=<id>,prompt.id=<id>`) in `params._meta` (SEP-414 primary carrier) or HTTP headers (secondary carrier), when the server receives the call, then the server extracts parent trace context and strictly allowlisted baggage keys (`session.id` / `session_id`, `agent.id` / `agent_id`, `prompt.id` / `prompt_id`, `parent.session_id` / `parent_session_id`, `task.id` / `task_id`) with `params._meta` taking precedence over HTTP headers, and falls back to client-native conversation metadata (`params._meta["antigravity.google/root_conversation_id"]` or `params._meta["antigravity.google/conversation_id"]`) when baggage carries no session identifier.
 - **AC-1.2** Given a programmatic HTTP caller invoking an upstream MCP server directly or through a gateway portal (using `?codemode=off` and an explicit non-default `User-Agent` when calling through a Code Mode portal), when the caller sends the request, then it uses stateless MCP `2026-07-28` (`MCP-Protocol-Version: 2026-07-28`, `Mcp-Method`, `Mcp-Name`, and `params._meta` client descriptors) with W3C `traceparent` and `baggage` in both `params._meta` and HTTP headers, with zero stateful `initialize` handshakes and zero `x-session-id` or `arguments.session_id` correlation parameters.
-- **AC-1.3** Given a hook-traced agent session invoking tools through a gateway Code Mode wrapper (`portal_codemode_execute`) that strips outer `_meta` and correlation headers, when the call executes, then session grouping, subagent lineage, and task attribution are recorded on the client hook tracer's `TOOL` span in the shared trace project without requiring agents or hooks to inject `session_id` into tool arguments.
+- **AC-1.3** Given a hook-traced agent session invoking tools through a gateway Code Mode wrapper (`portal_codemode_execute`) that strips outer `_meta` and correlation headers, when the call executes, then session grouping, subagent lineage, full Code Mode input/output payloads, and structured `task.id` on task-bound sessions (`AOPS_TASK_ID`) are recorded on the client hook tracer's `TOOL` span in the shared trace project without requiring agents or hooks to inject `session_id` into tool arguments.
 - **AC-1.4** Given a request that arrives without baggage or client-native session metadata, when the server processes the call, then the server executes the tool normally (never refusing the call for missing correlation metadata) with `session.id` unset and `aops.session.source = "none"`.
 
 ### US-2 Keep domain tool schemas free of transport and correlation parameters
@@ -41,7 +41,7 @@ As an auditor inspecting traces, I want every custom MCP server to emit OpenTele
 
 As a platform operator deploying MCP servers in various runtime environments, I want servers in any language to use a uniform, fail-fast configuration contract for OpenTelemetry export, so that telemetry pipelines deploy reliably and configuration errors halt immediately at startup.
 
-- **AC-4.1** Given an instrumented MCP server initializing telemetry, when resolving the collector OTLP traces endpoint, then the server resolves the endpoint in precedence order from `GENAI_ENGINE_TRACE_ENDPOINT` / `GENAI_ENGINE_ENDPOINT` followed by `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` / `OTEL_EXPORTER_OTLP_ENDPOINT`, and if none is set, halts startup immediately with an explicit configuration error.
+- **AC-4.1** Given an instrumented MCP server initializing telemetry, when resolving the collector OTLP traces endpoint, then the server resolves the endpoint in precedence order from `GENAI_ENGINE_ENDPOINT` followed by `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, and if neither variable is set, halts startup immediately with an explicit configuration error.
 - **AC-4.2** Given an instrumented MCP server initializing telemetry with an endpoint configured, when configuring export credentials, then the server builds the `CF-Access-Client-Id` and `CF-Access-Client-Secret` headers from `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET` and passes them to the exporter constructor; it never reads or sets `OTEL_EXPORTER_OTLP_HEADERS` as a carrier for the token, since every OTel SDK in the process tree would pick it up.
 - **AC-4.3** Given an instrumented MCP server exporting tool spans, when the collector endpoint is unreachable or span delivery encounters an error, then the server surfaces the export failure with diagnostic error details to standard error output.
 
@@ -72,7 +72,7 @@ Programmatic HTTP Caller (Direct or Portal ?codemode=off)
 
 ```
 Hook-Traced Agent Session (Gateway Code Mode, e.g. portal_codemode_execute)
-  ├── Client hook tracer emits TOOL span (session.id, agent.id, parent.session_id, task.id, input/output)
+  ├── Client hook tracer emits TOOL span (session.id, agent.id, parent.session_id, input/output, plus task.id when task-bound)
   └── Gateway Code Mode invokes upstream server (/mcp, stateless 2026-07-28)
           └── Upstream server executes clean domain tool and emits service TOOL span (mcp.client.name, latency)
 ```
@@ -110,11 +110,11 @@ Custom MCP servers configure OpenTelemetry export using environment variables co
 
 | Variable | Precedence | Purpose |
 | :- | :- | :- |
-| `GENAI_ENGINE_TRACE_ENDPOINT` / `GENAI_ENGINE_ENDPOINT` | 1 | Primary OTLP traces export URL (e.g. `https://otel.example.org/v1/traces` or `http://localhost:4318/v1/traces`). |
-| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` / `OTEL_EXPORTER_OTLP_ENDPOINT` | 2 | Secondary OTLP traces export URL evaluated if the primary variable is unset. |
+| `GENAI_ENGINE_ENDPOINT` | 1 | Primary OTLP traces export URL (e.g. `https://otel.example.org/v1/traces` or `http://localhost:4318/v1/traces`). |
+| `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | 2 | Secondary OTLP traces export URL evaluated if `GENAI_ENGINE_ENDPOINT` is unset. |
 | `CF_ACCESS_CLIENT_ID` + `CF_ACCESS_CLIENT_SECRET` | 1 | The one Cloudflare Access service-token pair, sent as `CF-Access-Client-Id` / `CF-Access-Client-Secret`. The launching context chooses which stored token fills it. |
 | `OTEL_SERVICE_NAME` | 1 | Logical service name for the server instance. |
 
 #### Fail-Fast Startup and Export Reliability
 
-Servers require an explicit OTLP endpoint to initialize telemetry. If no OTLP endpoint variable is set, the server aborts startup immediately with an exit code and an error message identifying the missing configuration. When an export batch fails at runtime, the server surfaces the error to standard error output rather than discarding telemetry silently.
+Servers require an explicit OTLP endpoint to initialize telemetry. If neither `GENAI_ENGINE_ENDPOINT` nor `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` is set, the server aborts startup immediately with an exit code and an error message identifying the missing configuration. When an export batch fails at runtime, the server surfaces the error to standard error output rather than discarding telemetry silently.
