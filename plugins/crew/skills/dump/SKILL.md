@@ -26,41 +26,38 @@ Offer settled durable facts (decisions, constraints, verified current-state find
 
 ### 4. Release Claimed Tasks (Children First)
 
-1. Refetch current task state (`pkb_get_task`), update `## Report` solely in unfenced prose Argdown blocks per `ida:premise-check` (leading with original ask/criteria and release outcome, breaking out every deciding observation as its own sourced numbered premise), and call `pkb_release_task`:
+1. Refetch current task state (`pkb_get_task`), update `## Report` (leading with original ask/criteria and release outcome, with each deciding observation and its source), and call `pkb_release_task`:
    - `done`: Single completion status when all in-scope criteria have primary evidence in `## Report` and deliverables are delivered (draft PR opened with `pr_url`/`branch`, or PKB artifact recorded -- without waiting for CI, review, merge, or proof of user installation/deployment). Workers release `done` when in-session deliverables finish and any out-of-session work is queued as follow-up tasks.
    - `partial`: Worker's own criteria or in-session subtasks remain unfinished (blocker, scope seam, missing tool, pre-work approval boundary), or task includes an unreachable post-exit criterion (finish reachable work, leave that item unticked, cite in `reason`).
    - `failed`: Unrecoverable blocker or check failure.
    - `cancelled`: Obsolete or invalidated.
    - `in_progress`: Immediate active successor session continuing.
-   - Never set or release `review` (human hold only). Workers never write `## Premise-Check Verdict`.
+   - Never set or release `review` (human hold only).
 
 ```markdown
 **Original Ask (`<task-id>/AC1`):** <Original acceptance criterion in full>
 
 **Main Conclusion:** Task `<task-id>` (<title>) released as `<status>` on `<branch>` (`<commit-sha>`, `<pr-url or artifact>`), subject to <limitations or none>.
 
-### Deliverable Verification
+### Deliverables
 
-(1) <Atomic deliverable observation quoting branch, commit SHA, PR URL, or persisted artifact inline>.
-(2) <Separate atomic verification observation quoting deciding command output, count, or test receipt inline>.
-(3) Rule compliance check: <none observed, or explicit rule violation disclosure with rule citation>.
--- <Plain-prose warrant linking observations to criterion; name nearest plausible rival, limitation, or exception and whether (1)-(3) rule it out or leave a qualifier.> --
-(4) So, <earned qualifier>, `<task-id>/AC1` is satisfied.
+1. <Deliverable: branch, commit SHA, PR URL, or persisted artifact>.
+2. <Deciding command output, count, or test receipt>.
+3. Rule compliance: <none observed, or explicit rule violation disclosure with rule citation>.
+4. Limitations: <limitations or none>.
 
-### Handover Disposition
+### Handover
 
-(1) Durable facts for custodian (`pauli`): <settled facts with primary pointers, or none>.
-(2) Next step: <pre-existing task-id pointer | 2-4 sentence resumption prompt | none>.
-(3) Daily-note project line (isolated workers only): `<project>: <10-20 word status/find> [-- Next: <pointer or prompt>]`.
--- Releasing `<task-id>` as `<status>` requires recording durable facts, next-step pickup state, and (when isolated) the daily-note line without mutating shared notes concurrently. --
-(4) So `<task-id>` hands over cleanly under status `<status>`.
+1. Durable facts for custodian (`pauli`): <settled facts with primary pointers, or none>.
+2. Next step: <pre-existing task-id pointer | 2-4 sentence resumption prompt | none>.
+3. Daily-note project line (isolated workers only): `<project>: <10-20 word status/find> [-- Next: <pointer or prompt>]`.
 ```
 
-Omit premise `(3)` in `### Handover Disposition` when the daily note is updated directly.
+Omit item 3 under `### Handover` when the daily note is updated directly.
 
 ### 5. Consolidated Daily Note Updates
 
-For touched projects (modified repo files, updated tasks, or major operational/empirical finds): interactive and coordinator sessions write one consolidated bullet per project under `## Today's work`: `- **<project>**: <10-20 word status/find> -- Next: <pointer or prompt>` (omit `-- Next:` when complete). Isolated workers carry that line as a numbered premise inside `### Handover Disposition` to avoid write contention.
+For touched projects (modified repo files, updated tasks, or major operational/empirical finds): interactive and coordinator sessions write one consolidated bullet per project under `## Today's work`: `- **<project>**: <10-20 word status/find> -- Next: <pointer or prompt>` (omit `-- Next:` when complete). Isolated workers carry that line as an item under `### Handover` to avoid write contention.
 
 ### 6. Next-Step Determination
 
@@ -68,5 +65,5 @@ Never invent speculative follow-ups: list pre-existing dependent task pointers, 
 
 ### 7. Emit Final Handover Report
 
-- **Agent-to-agent handovers (workers, subagents, container coordinators)**: Report solely in unfenced prose Argdown blocks per `ida:premise-check` covering task ID and release status (`done | partial | failed | cancelled | in_progress`), original ask and acceptance criteria with atomic sourced primary evidence (branch, commit SHA, PR/artifact link, test/control receipts), limitations, durable facts, next step (`task-id` link | resumption prompt | none), isolated-worker daily-note line, and disclosed rule violations.
+- **Agent-to-agent handovers (workers, subagents, container coordinators)**: Report task ID and release status (`done | partial | failed | cancelled | in_progress`), original ask and acceptance criteria with sourced primary evidence (branch, commit SHA, PR/artifact link, test/control receipts), limitations, durable facts, next step (`task-id` link | resumption prompt | none), isolated-worker daily-note line, and disclosed rule violations.
 - **User-facing handover directly to the user**: Present a concise Markdown handover covering task, status, outputs, verified evidence, next step, durable facts, limitations, and any disclosed rule violations.

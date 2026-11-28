@@ -14,4 +14,4 @@ Sends existing work to a worker container. The worker has no plugins and no PKB 
 1. The custodian (`pauli`) reifies the task (`/reify`) just before dispatch, so it is complete without PKB knowledge.
 2. The dispatcher starts the worker against the existing task; no child tasks are minted.
 3. No one runs `/pull`, `/dump`, claim or release for it, the worker included.
-4. Report the dispatch outcome in prose Argdown per `premise-check`.
+4. Report the dispatch outcome.

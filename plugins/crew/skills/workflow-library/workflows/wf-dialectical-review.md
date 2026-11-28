@@ -24,7 +24,7 @@ Reviews work after it is handed back. The coordinator decides how much review th
 
 ## Brief
 
-Every reviewer gets the same neutral brief, in prose Argdown per `premise-check`: the commissioning ask verbatim with its locator, any standard the user set (otherwise a standard reasonable for the work's purpose, audience and stakes), and the artifact itself (branch and commit, path, or text).
+Every reviewer gets the same neutral brief: the commissioning ask verbatim with its locator, any standard the user set (otherwise a standard reasonable for the work's purpose, audience and stakes), and the artifact itself (branch and commit, path, or text).
 
 ## Lenses (send only those the work needs)
 
@@ -36,7 +36,7 @@ Every reviewer gets the same neutral brief, in prose Argdown per `premise-check`
 
 1. **Size**: pick the lenses and whether a second round is warranted.
 2. **Review**: run the lenses independently and wait for all of them.
-3. **Reconcile**: judge each handback on the message alone per `premise-check` (zero outside substantive checks; proportionate depth, material remands only). Strike findings outside a lens's remit, preferences about phrasing or layout, and demands for a standard inappropriate to the work. A valid in-remit FAIL stands.
+3. **Reconcile**: strike findings outside a lens's remit, preferences about phrasing or layout, and demands for a standard inappropriate to the work. A valid in-remit FAIL stands.
 
 Where defects are clearly fixable without ambiguity, reviewers with write permissions and no conflicting instruction restriction apply and commit them in place (itemizing applied fixes); otherwise they suggest the exact fix alongside remaining required changes. Never mint tasks.
 

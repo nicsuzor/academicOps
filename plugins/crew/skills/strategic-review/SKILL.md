@@ -38,10 +38,9 @@ Every reviewer judges proportion within its lens: whether the artifact builds mo
 
 - **Fast path**: For single-pass checks with no fatal blockers or cross-lens contradictions, proceed directly to reconciliation.
 - **Dialectical rounds**:
-  - Run `ida:premise-check` judicial review on handbacks on the message alone (zero outside substantive checks; proportionate depth, material remands only).
   - Screen jurisdiction and standards: reject reviewer findings that act outside jurisdiction, police layout or phrasing preferences within reasonable authorial discretion, demand fake numeric proxies for qualitative judgment, or impose a standard of proof inappropriate in the circumstances.
   - Verify warrants on the record: documentation (`README.md`, knowledge notes) proves only what the text says, not live working state (require completed verification evidence or quoted live state, else mark an open question); cited PRs or code are authoritative only if shown current and backed by a specification or decision record.
-  - When valid in-jurisdiction findings clash (e.g. compliance vs. strategic parsimony), cross-examine reviewers directly in prose Argdown blocks per `ida:premise-check` to force defense, concession, or synthesis without softening tension; intervene immediately on altitude drift.
+  - When valid in-jurisdiction findings clash (e.g. compliance vs. strategic parsimony), cross-examine reviewers directly to force defense, concession, or synthesis without softening tension; intervene immediately on altitude drift.
 
 ### 4. Reconcile Findings
 
@@ -56,7 +55,7 @@ Compile calibration (chosen tier, rounds, contextual standard, target altitude),
 
 ### 5. Action and Reporting
 
-- **Internal agent-to-agent messages**: Send all briefings, cross-examinations, and review handbacks solely in unfenced prose Argdown blocks per `ida:premise-check` (covering calibration, applied/suggested fixes, required changes, reconciled findings, and overall verdict). Treat any guard or harness refusal as a verbatim halt -- never bypass via `SendMessage` or alternate channels.
+- **Internal agent-to-agent messages**: Briefings, cross-examinations, and review handbacks cover calibration, applied/suggested fixes, required changes, reconciled findings, and overall verdict). Treat any guard or harness refusal as a verbatim halt -- never bypass via `SendMessage` or alternate channels.
 - **Published / user-facing outputs**: Use structured Markdown (`### Reviewer Self-Fixes Applied`, `### Suggested Fixes`, `### Required Changes`, and the synthesis table) strictly for published PR/issue comments (`comment`) or user-facing outputs.
 - **`comment` / `fix`**: Verify `data-boundaries` against destination visibility before posting comments or pushing commits (scrubbing private PKB IDs and PII on public repositories while keeping internal IDs authorized in private task records and direct user replies; `fix` applies straightforward mechanical remedies).
 - Record the final verdict and evidence on the artifact's task record.

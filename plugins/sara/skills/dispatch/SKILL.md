@@ -27,4 +27,4 @@ Containers start asynchronously; assume execution proceeds unless an immediate l
 
 ## 3. Report and Stop (Fire-and-Forget)
 
-Report each dispatched task (title, ID, launched) as atomic sourced premises in a compact prose Argdown block per `ida:premise-check` and end your turn immediately. Never wait for container completion, block on event streams, or spin in shell polling or `sleep` loops; the polecat service writes each completed task to the PKB as its container is reaped, and this skill runs no completion sweep.
+Report each dispatched task (title, ID, launched) and end your turn immediately. Never wait for container completion, block on event streams, or spin in shell polling or `sleep` loops; the polecat service writes each completed task to the PKB as its container is reaped, and this skill runs no completion sweep.
