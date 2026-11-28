@@ -34,7 +34,7 @@ As a compliance reviewer evaluating artifacts across host, container, or remote 
 User-scoped rules operate across two distinct enforcement subsystems with separate reachability boundaries and execution models:
 
 1. **In-Session Runtime Evaluator (COPE):** Automated turn-by-turn tool-call classification. The evaluator runs in low-latency hook subprocesses without asynchronous tool execution capabilities. It sources user-scoped rules from local Markdown files (`*.md`) located in the directory specified by `COPE_USER_RULES_DIR`.
-2. **Qualitative Compliance Reviewer (RBG):** Deliberative compliance review of specifications, code, and pull requests. RBG operates in sandboxed execution environments, worker containers, and headless agent sessions where arbitrary host filesystem paths are unmounted and unreachable. RBG reads only plugin distribution assets (`skills/axioms/`), the current repository (`.agents/rules/`), and the knowledge base. Consequently, RBG sources user-scoped rules from the knowledge base via its `type: rule` document attribute.
+2. **Qualitative Compliance Reviewer:** Deliberative compliance review of specifications, code, and pull requests. The reviewer operates in sandboxed execution environments, worker containers, and headless agent sessions where arbitrary host filesystem paths are unmounted and unreachable. It reads only plugin distribution assets (`skills/axioms/`), the current repository (`.agents/rules/`), and the knowledge base. Consequently, it sources user-scoped rules from the knowledge base via its `type: rule` document attribute.
 
 ### 2. Knowledge Base Sourcing Contract for Compliance Review
 
@@ -64,7 +64,7 @@ An axiom always overrides a project or user rule; a project rule always override
 
 ### 5. Reachability & Deployment Matrix
 
-| Deployment Surface | Runtime Evaluator (COPE) | Compliance Reviewer (RBG) |
+| Deployment Surface | Runtime Evaluator (COPE) | Compliance Reviewer |
 | - | - | - |
 | **Interactive Host Session** | Reads `COPE_USER_RULES_DIR/*.md`. Silent no-op when unset. | Queries knowledge base documents with `type: rule`. |
 | **Polecat Container Worker** | Reads container mount `/etc/cope/rules` (`ENV COPE_USER_RULES_DIR=/etc/cope/rules`). | Queries knowledge base documents with `type: rule`. |

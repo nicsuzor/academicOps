@@ -42,7 +42,7 @@ As an author refining premises or tagging open gaps in Argdown, I want edits to 
 
 Responsibilities are partitioned between domain semantics and general diagram manipulation:
 
-1. **Visual Argument Mapping Skill (`ida:argument-map`):**
+1. **Visual Argument Mapping Skill (`crew:argument-map`):**
    - Extracts and reconstructs argument structures from source texts into canonical Argdown.
    - Maps semantic constructs (thesis, parts, chapters, sections, warrants) to visual hierarchy.
    - Manages the multi-scale canvas decomposition (overview canvas and per-part sub-canvases).

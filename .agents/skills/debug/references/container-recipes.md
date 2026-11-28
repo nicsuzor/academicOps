@@ -63,7 +63,7 @@ tmux kill-session -t "$TMUX_NAME" 2>/dev/null || true
 
 ## Telemetry and Host Filesystem Audit
 
-Inspect tool calls, model output, errors, latencies, and token spend from Arize Phoenix via `ida:phoenix` (generates `<slug>.outline.md` and runs Phoenix MCP queries).
+Inspect tool calls, model output, errors, latencies, and token spend from Arize Phoenix via `crew:phoenix` (generates `<slug>.outline.md` and runs Phoenix MCP queries).
 
 Host container artifacts land under `$AOPS_SESSIONS/logs/<YYYYMMDD>/<session-id>/workspace/`:
 

@@ -1,4 +1,8 @@
-"""Tests for ida hooks: hearsay and honesty."""
+"""Tests for ida hooks (hearsay, honesty) and the crew session hooks they run beside.
+
+ida owns the hearsay gate and the premise-check pointer. crew owns session
+metadata, the PKB pointer, PKB prompt grounding, and agent-name matching.
+"""
 
 from __future__ import annotations
 
@@ -25,6 +29,15 @@ assert handlers_spec is not None and handlers_spec.loader is not None
 handlers = importlib.util.module_from_spec(handlers_spec)
 handlers_spec.loader.exec_module(handlers)
 
+CREW_HOOKS = REPO_ROOT / "plugins" / "crew" / "hooks"
+crew_spec = importlib.util.spec_from_file_location(
+    "ida_tests_crew_handlers", CREW_HOOKS / "handlers.py"
+)
+assert crew_spec is not None and crew_spec.loader is not None
+crew_handlers = importlib.util.module_from_spec(crew_spec)
+sys.modules["ida_tests_crew_handlers"] = crew_handlers
+crew_spec.loader.exec_module(crew_handlers)
+
 from dispatch import HookContext, Kind, load_message_pair  # type: ignore[import-not-found]
 
 
@@ -46,7 +59,7 @@ _PEER_REPORT = '<cross-session-message from="twin-a">PR #12 merged</cross-sessio
 _USER_MESSAGE = '<channel source="plugin:telegram:telegram" user="tester">ship it</channel>'
 
 
-@pytest.mark.parametrize("agent", ["ida:ida", "ida:sara"])
+@pytest.mark.parametrize("agent", ["ida:ida", "sara:sara"])
 def test_hearsay_fires_on_a_peer_report(agent):
     ctx = HookContext(
         client="claude",
@@ -64,7 +77,7 @@ def test_hearsay_fires_on_a_peer_report(agent):
     assert res.user_text == expected_user
 
 
-@pytest.mark.parametrize("agent", ["ida:ida", "ida:sara", "sara"])
+@pytest.mark.parametrize("agent", ["ida:ida", "sara:sara", "sara"])
 @pytest.mark.parametrize("bg_val", [None, False, "false"])
 def test_hearsay_fires_on_foreground_subagent_post_tool_use(agent, bg_val):
     tool_input = {"description": "foreground subagent"}
@@ -149,14 +162,14 @@ def test_is_ida_variants():
 
     for valid_agent in ("ida", "ida:ida", "plugin:ida", "ida-prime", "ida_prime"):
         ctx = HookContext(client="claude", event="Stop", agent_type=valid_agent)
-        assert handlers._is_ida(ctx) is True, f"failed for {valid_agent}"
-        assert handlers.is_ida(ctx) is True, f"failed for {valid_agent}"
-        assert handlers.is_agent(ctx, "ida") is True, f"failed for {valid_agent}"
+        assert crew_handlers._is_ida(ctx) is True, f"failed for {valid_agent}"
+        assert crew_handlers.is_ida(ctx) is True, f"failed for {valid_agent}"
+        assert crew_handlers.is_agent(ctx, "ida") is True, f"failed for {valid_agent}"
 
     for invalid_agent in ("aops:james", "james", "pauli", "marsha", "rbg", "ida:custom", ""):
         ctx = HookContext(client="claude", event="Stop", agent_type=invalid_agent)
-        assert handlers._is_ida(ctx) is False, f"falsely matched for {invalid_agent}"
-        assert handlers.is_ida(ctx) is False, f"falsely matched for {invalid_agent}"
+        assert crew_handlers._is_ida(ctx) is False, f"falsely matched for {invalid_agent}"
+        assert crew_handlers.is_ida(ctx) is False, f"falsely matched for {invalid_agent}"
 
 
 def test_is_agent_variants():
@@ -171,18 +184,18 @@ def test_is_agent_variants():
         "plugin:james",
     ):
         ctx = HookContext(client="claude", event="Stop", agent_type=valid_james)
-        assert handlers.is_agent(ctx, "james") is True, f"failed for {valid_james}"
-        assert handlers.is_agent(ctx, "ida", "james") is True, (
+        assert crew_handlers.is_agent(ctx, "james") is True, f"failed for {valid_james}"
+        assert crew_handlers.is_agent(ctx, "ida", "james") is True, (
             f"failed for multi target {valid_james}"
         )
-        assert handlers.is_ida(ctx, "james") is True, (
+        assert crew_handlers.is_ida(ctx, "james") is True, (
             f"failed for is_ida extra target {valid_james}"
         )
 
     # Also string directly and None handling
-    assert handlers.is_agent("aops:james", "james") is True
-    assert handlers.is_agent("ida", "ida") is True
-    assert handlers.is_agent(None, "ida") is False
+    assert crew_handlers.is_agent("aops:james", "james") is True
+    assert crew_handlers.is_agent("ida", "ida") is True
+    assert crew_handlers.is_agent(None, "ida") is False
 
 
 def test_normalize_resolves_agent_from_aliases_and_env(
@@ -201,8 +214,8 @@ def test_normalize_resolves_agent_from_aliases_and_env(
     assert normalize("claude", "Stop", {"agentType": "ida:ida"}, hooks_dir).agent_type == "ida:ida"
     assert normalize("claude", "Stop", {"agentName": "ida"}, hooks_dir).agent_type == "ida"
     assert (
-        normalize("claude", "Stop", {"subagentType": "ida:pauli"}, hooks_dir).agent_type
-        == "ida:pauli"
+        normalize("claude", "Stop", {"subagentType": "crew:pauli"}, hooks_dir).agent_type
+        == "crew:pauli"
     )
     assert normalize("claude", "Stop", {"subagentName": "pauli"}, hooks_dir).agent_type == "pauli"
     assert normalize("claude", "Stop", {"agentId": "sub-1"}, hooks_dir).agent_id == "sub-1"
@@ -289,8 +302,8 @@ def test_normalize_agy_ancestor_flag_overrides_ambient_aops_agent_name(
         hooks_dir,
     )
     assert ctx.agent_type == "pauli"
-    with patch.object(handlers, "_run_pkb_search") as mock_search:
-        assert handlers.search_the_pkb(ctx) is None
+    with patch.object(crew_handlers, "_run_pkb_search") as mock_search:
+        assert crew_handlers.search_the_pkb(ctx) is None
         mock_search.assert_not_called()
 
     # Unnamed agy (no --agent flag) still falls back to AOPS_AGENT_NAME
@@ -351,9 +364,11 @@ def test_user_messages_get_pkb_hydration_and_no_hearsay_or_gate(prompt, expected
         raw={"prompt": prompt},
     )
 
-    with patch.object(handlers, "_run_pkb_search", return_value="1. Match in pkb") as mock_search:
+    with patch.object(
+        crew_handlers, "_run_pkb_search", return_value="1. Match in pkb"
+    ) as mock_search:
         # 1. PKB search runs with the unwrapped query
-        search_res = handlers.search_the_pkb(ctx)
+        search_res = crew_handlers.search_the_pkb(ctx)
         mock_search.assert_called_once_with(expected_query, cwd="/workspace", session_id=session_id)
         assert search_res is not None
         assert "<academicOps PKB search results>" in search_res.inject_text
@@ -394,9 +409,9 @@ def test_agent_messages_get_hearsay_and_arm_gate_without_hydration(peer_prompt):
         raw={"prompt": peer_prompt},
     )
 
-    with patch.object(handlers, "_run_pkb_search", return_value="1. note") as mock_search:
+    with patch.object(crew_handlers, "_run_pkb_search", return_value="1. note") as mock_search:
         # 1. Hydration skips peer/agent/handback/task envelopes
-        search_res = handlers.search_the_pkb(ctx)
+        search_res = crew_handlers.search_the_pkb(ctx)
         mock_search.assert_not_called()
         assert search_res is None
 
@@ -415,7 +430,7 @@ def test_agent_messages_get_hearsay_and_arm_gate_without_hydration(peer_prompt):
 
 
 @pytest.mark.parametrize(
-    "agent", ["ida:ida", "ida:sara", "aops:james", "worker", "pauli", "marsha", "rbg", ""]
+    "agent", ["ida:ida", "sara:sara", "aops:james", "worker", "pauli", "marsha", "rbg", ""]
 )
 def test_honest_output_fires_on_subagent_start_for_all_agents(agent: str):
     """When a subagent starts on SubagentStart, honesty.md fires for all agents."""
@@ -455,6 +470,46 @@ def test_dispatch_honesty_reaches_all_agents_on_subagent_start(staged_hooks: Pat
     data = json.loads(proc.stdout)
     expected_honesty, _ = load_message_pair(staged_hooks, "honesty")
     assert expected_honesty in data["hookSpecificOutput"]["additionalContext"]
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    ("client", "wire_event", "agent"),
+    [("claude", "UserPromptSubmit", "ida:ida"), ("agy", "PreInvocation", "ida")],
+)
+def test_dispatch_peer_report_carries_hearsay_reminder(
+    staged_hooks: Path, tmp_path: Path, client: str, wire_event: str, agent: str
+):
+    """End-to-end dispatch: a peer report reaches the agent with the hearsay reminder."""
+    env = dict(os.environ)
+    env["AOPS_PREMISE_GATE_DIR"] = str(tmp_path / "gate")
+    env["AOPS_SESSION_POINTER_DIR"] = str(tmp_path / "ptr")
+    proc = subprocess.run(
+        [sys.executable, str(staged_hooks / "dispatch.py"), client, wire_event],
+        input=json.dumps(
+            {
+                "hook_event_name": wire_event,
+                "agent_type": agent,
+                "prompt": '<cross-session-message from="twin-a">survey release</cross-session-message>',
+            }
+        ),
+        text=True,
+        capture_output=True,
+        timeout=15,
+        cwd=str(staged_hooks),
+        env=env,
+    )
+    assert proc.returncode == 0, proc.stderr
+    data = json.loads(proc.stdout)
+    expected_inject, _ = load_message_pair(staged_hooks, "hearsay")
+    assert expected_inject
+    if client == "claude":
+        specific = data["hookSpecificOutput"]
+        assert specific["hookEventName"] == "UserPromptSubmit"
+        assert expected_inject in specific["additionalContext"]
+    else:
+        steps = data["injectSteps"]
+        assert any(expected_inject in step.get("ephemeralMessage", "") for step in steps)
 
 
 @pytest.mark.integration
@@ -718,10 +773,10 @@ def test_session_start_raises_when_pkb_mcp_url_unset(monkeypatch: pytest.MonkeyP
         client="claude",
         event="SessionStart",
         session_id="s-pkb-test",
-        hooks_dir=IDA_HOOKS,
+        hooks_dir=CREW_HOOKS,
     )
     with pytest.raises(RuntimeError, match="PKB_MCP_URL"):
-        handlers.session_start(ctx)
+        crew_handlers.session_start(ctx)
 
 
 # ---------------------------------------------------------------------------
@@ -824,11 +879,11 @@ def test_agy_session_start_renders_metadata_system_message(monkeypatch: pytest.M
     }
     assert to_canonical("agy", "SessionStart") == "SessionStart"
 
-    ctx = normalize("agy", "SessionStart", raw, IDA_HOOKS)
+    ctx = normalize("agy", "SessionStart", raw, CREW_HOOKS)
     assert ctx.session_id == "agy-sess-123"
     assert ctx.cwd == "/workspace"
 
-    res = handlers.session_start(ctx)
+    res = crew_handlers.session_start(ctx)
     assert res is not None
     assert "plugins: v1.0-rc10" in res.inject_text
     assert "session: agy-sess-123" in res.inject_text
@@ -852,7 +907,7 @@ def test_agy_session_start_renders_metadata_system_message(monkeypatch: pytest.M
     if len(steps) > 1:
         eph_step = steps[1]
         assert "ephemeralMessage" in eph_step
-        assert handlers.PREMISE_CHECK_POINTER in eph_step["ephemeralMessage"]
+        assert crew_handlers.PKB_SESSION_POINTER in eph_step["ephemeralMessage"]
 
 
 @pytest.mark.parametrize(
@@ -886,7 +941,7 @@ def test_session_start_startup_line_carries_plugin_version_from_manifest(
         "cwd": "/workspace",
     }
     ctx = normalize(client, "SessionStart", raw, hooks_dir)
-    res = handlers.session_start(ctx)
+    res = crew_handlers.session_start(ctx)
 
     assert res is not None
     startup_line = res.inject_text.splitlines()[0]
@@ -937,25 +992,38 @@ def test_render_agy_formats_system_message_and_ephemeral_message():
     }
 
 
+@pytest.mark.parametrize(
+    ("plugin", "hooks_dir", "pointer_name"),
+    [
+        (handlers, IDA_HOOKS, "PREMISE_CHECK_POINTER"),
+        (crew_handlers, CREW_HOOKS, "PKB_SESSION_POINTER"),
+    ],
+    ids=["ida", "crew"],
+)
 def test_session_start_followed_by_user_prompt_submit_emits_pointer_once(
-    pointer_state: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    plugin,
+    hooks_dir: Path,
+    pointer_name: str,
+    pointer_state: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ):
-    """AC1: PREMISE_CHECK_POINTER is emitted at SessionStart and not repeated on UserPromptSubmit."""
+    """AC1: each plugin's pointer is emitted at SessionStart and not repeated on UserPromptSubmit."""
     from dispatch import normalize
 
     monkeypatch.delenv("CLAUDE_ENV_FILE", raising=False)
     monkeypatch.setenv("PKB_MCP_URL", "http://localhost:8000")
+    pointer = getattr(plugin, pointer_name)
 
     conv_id = "agy-once-test-conv"
     start_payload = {
         "conversationId": conv_id,
         "workspacePaths": ["/workspace"],
     }
-    start_ctx = normalize("agy", "SessionStart", start_payload, IDA_HOOKS)
-    start_res = handlers.session_start(start_ctx)
+    start_ctx = normalize("agy", "SessionStart", start_payload, hooks_dir)
+    start_res = plugin.session_start(start_ctx)
     assert start_res is not None
-    assert handlers.PREMISE_CHECK_POINTER in start_res.inject_text
-    assert handlers.PKB_SESSION_POINTER in start_res.inject_text
+    assert pointer in start_res.inject_text
 
     transcript = tmp_path / "transcript.jsonl"
     transcript.write_text(json.dumps({"type": "SYSTEM_MESSAGE", "content": "started"}) + "\n")
@@ -965,10 +1033,10 @@ def test_session_start_followed_by_user_prompt_submit_emits_pointer_once(
         "transcriptPath": str(transcript),
         "prompt": "hello",
     }
-    prompt_ctx = normalize("agy", "UserPromptSubmit", prompt_payload, IDA_HOOKS)
-    prompt_res = handlers.user_prompt_submit(prompt_ctx)
+    prompt_ctx = normalize("agy", "UserPromptSubmit", prompt_payload, hooks_dir)
+    prompt_res = plugin.user_prompt_submit(prompt_ctx)
     if prompt_res is not None:
-        assert handlers.PREMISE_CHECK_POINTER not in prompt_res.inject_text
+        assert pointer not in prompt_res.inject_text
 
 
 def test_session_start_injects_only_workspace_core_md(
@@ -992,7 +1060,7 @@ def test_session_start_injects_only_workspace_core_md(
         session_id="sess-ws-1",
         cwd=str(ws_dir),
     )
-    res_with_core = handlers.session_start(ctx_with_core)
+    res_with_core = crew_handlers.session_start(ctx_with_core)
     assert res_with_core is not None
     assert "# Project Local Rules" in res_with_core.inject_text
     assert "- Custom workspace rule." in res_with_core.inject_text
@@ -1006,7 +1074,7 @@ def test_session_start_injects_only_workspace_core_md(
         session_id="sess-ws-2",
         cwd=str(empty_ws),
     )
-    res_empty = handlers.session_start(ctx_empty)
+    res_empty = crew_handlers.session_start(ctx_empty)
     assert res_empty is not None
     assert "# Project Local Rules" not in res_empty.inject_text
 

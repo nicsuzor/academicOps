@@ -33,12 +33,12 @@ if [ -n "${PKB_MCP_URL:-}" ]; then
   claude mcp add --transport http --scope user services "${PKB_MCP_URL}"
 fi
 claude plugin install ida@academicOps
-claude plugin install rbg@academicOps
+claude plugin install crew@academicOps
 claude plugin install tools@academicOps
 claude plugin install aops-debug@academicOps
 
 # Disable claude.ai-synced copies so plugins are not loaded twice
-for p in ida rbg tools aops-debug; do
+for p in ida crew tools aops-debug; do
   claude plugin disable "${p}@synced" 2>/dev/null || true
 done
 
@@ -49,11 +49,11 @@ if [ -d /etc/claude-code/managed-settings.d ] || [ -w /etc ] || sudo -n true 2>/
   "enabledPlugins": {
     "aops-debug@academicOps": true,
     "ida@academicOps": true,
-    "rbg@academicOps": true,
+    "crew@academicOps": true,
     "tools@academicOps": true,
     "aops-debug@synced": false,
     "ida@synced": false,
-    "rbg@synced": false,
+    "crew@synced": false,
     "tools@synced": false
   }
 }

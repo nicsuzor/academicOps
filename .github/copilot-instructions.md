@@ -30,7 +30,7 @@ uv run basedpyright
 ```
 academicOps/
 ├── .agents/           # Rules for agents working ON this repo (READ-ONLY reference)
-│   ├── rules/        # RULES.md (project-specific rules; axioms live in plugins/rbg/skills/axioms/)
+│   ├── rules/        # RULES.md (project-specific rules; axioms live in plugins/crew/skills/axioms/)
 │   └── skills/       # Meta skills for this repo's own dev workflow
 ├── .github/
 │   ├── agents/       # Agent prompts (enforcer, mechanic, qa, pre-admission-responder)
@@ -40,8 +40,8 @@ academicOps/
 │   ├── hooks/         # Shared hook runtime
 │   └── py/            # Shared Python helpers
 ├── build/              # Build system (build.py, install.py, client adapters)
-├── plugins/            # Plugin sources: aops, pkb, ida, rbg, ts, tools
-│   └── rbg/skills/axioms/  # The axioms (single source of truth)
+├── plugins/            # Plugin sources: aops, pkb, ida, crew, ts, tools
+│   └── crew/skills/axioms/  # The axioms (single source of truth)
 ├── tests/              # Test suite, mirroring the source structure
 └── specs/              # Design specifications
 ```
@@ -61,7 +61,7 @@ academicOps/
 
 Use descriptive messages that say what changed and why.
 
-### Key Principles (from `plugins/rbg/skills/axioms/`)
+### Key Principles (from `plugins/crew/skills/axioms/`)
 
 - **`do-one-thing`**: Complete the assigned task, nothing more. No scope creep.
 - **`halt-on-failure`**: No workarounds. If something fails, stop and report. Never use `--no-verify`, `--force`, or skip flags.
@@ -85,7 +85,7 @@ Ruff and basedpyright are enforced separately, by `make lint` / CI, not by pre-c
 
 ## PR Review Pipeline
 
-PRs are reviewed by automated agents (enforcer/rbg + qa/marsha in Stage 1, mechanic in
+PRs are reviewed by automated agents (enforcer + qa in Stage 1, mechanic in
 Stage 2 after the human Environment-gate approval). The pipeline runs on PR open/push.
 Write clear PR descriptions explaining what changed and why -- the agents use this to
 evaluate scope compliance.

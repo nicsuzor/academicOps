@@ -37,7 +37,7 @@ SOFT_B = "No Shell Polling Loops: deny while/sleep polling."
 
 def test_install_merges_allow_and_soft_deny_into_empty_settings(tmp_path):
     dist_root, settings_path, state_path = _paths(tmp_path)
-    _write_automode_json(dist_root, "rbg", {"allow": [ALLOW_A], "soft_deny": [SOFT_A]})
+    _write_automode_json(dist_root, "crew", {"allow": [ALLOW_A], "soft_deny": [SOFT_A]})
 
     install_automode(dist_root, settings_path, state_path)
 
@@ -62,7 +62,7 @@ def test_install_gathers_and_deduplicates_across_multiple_plugins(tmp_path):
 
 def test_install_preserves_user_entries_and_untouched_automode_sections(tmp_path):
     dist_root, settings_path, state_path = _paths(tmp_path)
-    _write_automode_json(dist_root, "rbg", {"allow": [ALLOW_A], "soft_deny": [SOFT_A]})
+    _write_automode_json(dist_root, "crew", {"allow": [ALLOW_A], "soft_deny": [SOFT_A]})
     settings_path.write_text(
         json.dumps(
             {
@@ -89,7 +89,7 @@ def test_install_preserves_user_entries_and_untouched_automode_sections(tmp_path
 
 def test_install_is_idempotent(tmp_path):
     dist_root, settings_path, state_path = _paths(tmp_path)
-    _write_automode_json(dist_root, "rbg", {"allow": [ALLOW_A], "soft_deny": [SOFT_A, SOFT_B]})
+    _write_automode_json(dist_root, "crew", {"allow": [ALLOW_A], "soft_deny": [SOFT_A, SOFT_B]})
 
     install_automode(dist_root, settings_path, state_path)
     install_automode(dist_root, settings_path, state_path)
@@ -114,7 +114,7 @@ def test_install_retracts_stale_entries_and_legacy_axiom_slogans(tmp_path):
         )
     )
     state_path.write_text(json.dumps({"soft_deny": [legacy_slogan]}))
-    _write_automode_json(dist_root, "rbg", {"allow": [ALLOW_A], "soft_deny": [SOFT_A]})
+    _write_automode_json(dist_root, "crew", {"allow": [ALLOW_A], "soft_deny": [SOFT_A]})
 
     install_automode(dist_root, settings_path, state_path)
 
@@ -125,7 +125,7 @@ def test_install_retracts_stale_entries_and_legacy_axiom_slogans(tmp_path):
 
 def test_install_splices_defaults_sentinel_per_written_section_and_reports_it(tmp_path):
     dist_root, settings_path, state_path = _paths(tmp_path)
-    _write_automode_json(dist_root, "rbg", {"allow": [ALLOW_A], "soft_deny": [SOFT_A]})
+    _write_automode_json(dist_root, "crew", {"allow": [ALLOW_A], "soft_deny": [SOFT_A]})
 
     message = install_automode(dist_root, settings_path, state_path)
 
@@ -137,10 +137,10 @@ def test_install_splices_defaults_sentinel_per_written_section_and_reports_it(tm
 
 def test_install_does_not_duplicate_sentinel_or_record_it_as_owned(tmp_path):
     dist_root, settings_path, state_path = _paths(tmp_path)
-    _write_automode_json(dist_root, "rbg", {"allow": [ALLOW_A], "soft_deny": [SOFT_A]})
+    _write_automode_json(dist_root, "crew", {"allow": [ALLOW_A], "soft_deny": [SOFT_A]})
 
     install_automode(dist_root, settings_path, state_path)
-    _write_automode_json(dist_root, "rbg", {"allow": [ALLOW_A], "soft_deny": [SOFT_A, SOFT_B]})
+    _write_automode_json(dist_root, "crew", {"allow": [ALLOW_A], "soft_deny": [SOFT_A, SOFT_B]})
     install_automode(dist_root, settings_path, state_path)
 
     settings = json.loads(settings_path.read_text())
@@ -153,10 +153,10 @@ def test_install_does_not_duplicate_sentinel_or_record_it_as_owned(tmp_path):
 
 def test_install_drops_section_when_all_aops_entries_withdrawn_and_no_user_entries(tmp_path):
     dist_root, settings_path, state_path = _paths(tmp_path)
-    _write_automode_json(dist_root, "rbg", {"allow": [ALLOW_A], "soft_deny": [SOFT_A]})
+    _write_automode_json(dist_root, "crew", {"allow": [ALLOW_A], "soft_deny": [SOFT_A]})
     install_automode(dist_root, settings_path, state_path)
 
-    _write_automode_json(dist_root, "rbg", {"soft_deny": [SOFT_A]})
+    _write_automode_json(dist_root, "crew", {"soft_deny": [SOFT_A]})
     install_automode(dist_root, settings_path, state_path)
 
     settings = json.loads(settings_path.read_text())
@@ -166,7 +166,7 @@ def test_install_drops_section_when_all_aops_entries_withdrawn_and_no_user_entri
 
 def test_install_leaves_relocated_sentinel_where_user_put_it(tmp_path):
     dist_root, settings_path, state_path = _paths(tmp_path)
-    _write_automode_json(dist_root, "rbg", {"soft_deny": [SOFT_A]})
+    _write_automode_json(dist_root, "crew", {"soft_deny": [SOFT_A]})
     settings_path.write_text(
         json.dumps({"autoMode": {"soft_deny": ["users-own-rule: first", DEFAULTS_SENTINEL]}})
     )
@@ -183,7 +183,7 @@ def test_install_leaves_relocated_sentinel_where_user_put_it(tmp_path):
 
 def test_install_restores_deleted_sentinel_and_reports_it(tmp_path):
     dist_root, settings_path, state_path = _paths(tmp_path)
-    _write_automode_json(dist_root, "rbg", {"soft_deny": [SOFT_A]})
+    _write_automode_json(dist_root, "crew", {"soft_deny": [SOFT_A]})
     install_automode(dist_root, settings_path, state_path)
 
     settings = json.loads(settings_path.read_text())
@@ -202,7 +202,7 @@ def test_install_restores_deleted_sentinel_and_reports_it(tmp_path):
 def test_install_writes_only_declared_automode_sections(tmp_path):
     """Undeclared sections (`hard_deny`, `environment`) are never created."""
     dist_root, settings_path, state_path = _paths(tmp_path)
-    _write_automode_json(dist_root, "rbg", {"allow": [ALLOW_A], "soft_deny": [SOFT_A]})
+    _write_automode_json(dist_root, "crew", {"allow": [ALLOW_A], "soft_deny": [SOFT_A]})
 
     install_automode(dist_root, settings_path, state_path)
 
@@ -231,7 +231,7 @@ def test_install_missing_dist_root_is_not_an_error(tmp_path):
 
 def test_uninstall_removes_owned_entries_across_sections_and_keeps_user_entries(tmp_path):
     dist_root, settings_path, state_path = _paths(tmp_path)
-    _write_automode_json(dist_root, "rbg", {"allow": [ALLOW_A], "soft_deny": [SOFT_A]})
+    _write_automode_json(dist_root, "crew", {"allow": [ALLOW_A], "soft_deny": [SOFT_A]})
     settings_path.write_text(json.dumps({"autoMode": {"soft_deny": ["users-own-rule: kept"]}}))
 
     install_automode(dist_root, settings_path, state_path)
@@ -245,7 +245,7 @@ def test_uninstall_removes_owned_entries_across_sections_and_keeps_user_entries(
 
 def test_uninstall_drops_empty_automode_key_entirely(tmp_path):
     dist_root, settings_path, state_path = _paths(tmp_path)
-    _write_automode_json(dist_root, "rbg", {"allow": [ALLOW_A], "soft_deny": [SOFT_A]})
+    _write_automode_json(dist_root, "crew", {"allow": [ALLOW_A], "soft_deny": [SOFT_A]})
     install_automode(dist_root, settings_path, state_path)
 
     uninstall_automode(settings_path, state_path)
@@ -256,7 +256,7 @@ def test_uninstall_drops_empty_automode_key_entirely(tmp_path):
 
 def test_uninstall_preserves_untouched_sections(tmp_path):
     dist_root, settings_path, state_path = _paths(tmp_path)
-    _write_automode_json(dist_root, "rbg", {"allow": [ALLOW_A], "soft_deny": [SOFT_A]})
+    _write_automode_json(dist_root, "crew", {"allow": [ALLOW_A], "soft_deny": [SOFT_A]})
     settings_path.write_text(json.dumps({"autoMode": {"hard_deny": ["rm -rf /"]}}))
 
     install_automode(dist_root, settings_path, state_path)
@@ -268,7 +268,7 @@ def test_uninstall_preserves_untouched_sections(tmp_path):
 
 def test_uninstall_is_idempotent(tmp_path):
     dist_root, settings_path, state_path = _paths(tmp_path)
-    _write_automode_json(dist_root, "rbg", {"soft_deny": [SOFT_A]})
+    _write_automode_json(dist_root, "crew", {"soft_deny": [SOFT_A]})
     install_automode(dist_root, settings_path, state_path)
 
     uninstall_automode(settings_path, state_path)
@@ -279,7 +279,7 @@ def test_uninstall_is_idempotent(tmp_path):
 
 def test_malformed_settings_json_is_hard_error(tmp_path):
     dist_root, settings_path, state_path = _paths(tmp_path)
-    _write_automode_json(dist_root, "rbg", {"soft_deny": [SOFT_A]})
+    _write_automode_json(dist_root, "crew", {"soft_deny": [SOFT_A]})
     settings_path.write_text("{not valid json")
 
     with pytest.raises(InstallError, match="settings.json"):
@@ -288,7 +288,7 @@ def test_malformed_settings_json_is_hard_error(tmp_path):
 
 def test_malformed_state_file_is_hard_error(tmp_path):
     dist_root, settings_path, state_path = _paths(tmp_path)
-    _write_automode_json(dist_root, "rbg", {"soft_deny": [SOFT_A]})
+    _write_automode_json(dist_root, "crew", {"soft_deny": [SOFT_A]})
     state_path.write_text("{not valid json")
 
     with pytest.raises(InstallError, match="install state"):
@@ -297,7 +297,7 @@ def test_malformed_state_file_is_hard_error(tmp_path):
 
 def test_unknown_automode_section_is_hard_error(tmp_path):
     dist_root, settings_path, state_path = _paths(tmp_path)
-    _write_automode_json(dist_root, "rbg", {"softDeny": [SOFT_A]})
+    _write_automode_json(dist_root, "crew", {"softDeny": [SOFT_A]})
 
     with pytest.raises(InstallError, match="unknown autoMode section"):
         install_automode(dist_root, settings_path, state_path)
@@ -305,7 +305,7 @@ def test_unknown_automode_section_is_hard_error(tmp_path):
 
 def test_sentinel_inside_plugin_automode_json_is_hard_error(tmp_path):
     dist_root, settings_path, state_path = _paths(tmp_path)
-    _write_automode_json(dist_root, "rbg", {"soft_deny": [DEFAULTS_SENTINEL, SOFT_A]})
+    _write_automode_json(dist_root, "crew", {"soft_deny": [DEFAULTS_SENTINEL, SOFT_A]})
 
     with pytest.raises(InstallError, match=r"\$defaults"):
         install_automode(dist_root, settings_path, state_path)
@@ -313,7 +313,7 @@ def test_sentinel_inside_plugin_automode_json_is_hard_error(tmp_path):
 
 def test_non_string_entry_in_automode_json_is_hard_error(tmp_path):
     dist_root, settings_path, state_path = _paths(tmp_path)
-    _write_automode_json(dist_root, "rbg", {"soft_deny": [123]})
+    _write_automode_json(dist_root, "crew", {"soft_deny": [123]})
 
     with pytest.raises(InstallError, match="non-empty string"):
         install_automode(dist_root, settings_path, state_path)

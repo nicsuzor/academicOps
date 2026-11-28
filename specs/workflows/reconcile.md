@@ -9,7 +9,7 @@ tags: [spec, workflow, reconcile, github, pkb, closure-loop]
 # GH ↔ PKB Reconcile
 
 The reconcile procedure itself lives in universal workflow template `wf-reconcile`
-(`plugins/ida/skills/workflow-library/workflows/wf-reconcile.md`) and is not
+(`plugins/crew/skills/workflow-library/workflows/wf-reconcile.md`) and is not
 restated here. This spec carries the design constraints that bind it, the frontmatter and
 event-log surfaces it reads and writes, and the target shape of the GitHub-issue leg it does not
 yet cover.
@@ -36,7 +36,7 @@ one is covered.
    workflows and skills invoke it; they do not re-implement it.
 2. **No shitty NLP.** Mechanical matching is allowed only on guaranteed-structured surfaces
    (frontmatter fields, the GH API's `closingIssuesReferences`, frontmatter URLs). Anywhere prose
-   is involved, an agent reads it ([`human-readability-first`](../../plugins/rbg/skills/axioms/human-readability-first.md)).
+   is involved, an agent reads it ([`human-readability-first`](../../plugins/crew/skills/axioms/human-readability-first.md)).
 3. **State lives in PKB frontmatter.** Deltas between GH state and PKB state surface through a
    short-lived event log, which is a queue of unprocessed deltas, not state.
 4. **All task writes go through PKB MCP.** That is the concurrency primitive.

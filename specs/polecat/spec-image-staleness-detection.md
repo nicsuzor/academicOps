@@ -15,10 +15,11 @@ repository and supplied by the installer.
 
 ## The failure mode
 
-A polecat container gets its plugin payload -- skills, hooks, agents, MCP wrappers -- **baked into the image at build time**, while the code under test is
+A container image that carries the framework plugins -- a crew container -- gets its plugin payload -- skills, hooks, agents, MCP wrappers -- **baked into the image at build time**, while the code under test is
 **bind-mounted at launch** (`/workspace`). These are two different delivery paths,
-and only one of them updates when a file is edited
-([polecat-system.md](polecat-system.md), Guarantees 5 and 6).
+and only one of them updates when a file is edited. A polecat container carries no
+framework plugins ([polecat-system.md](polecat-system.md), Guarantee 5), so it has
+no plugin payload to go stale.
 
 So an operator who edits plugin code and dispatches without `make docker-build`
 runs the _old_ plugins against the _new_ workspace. The stale code usually

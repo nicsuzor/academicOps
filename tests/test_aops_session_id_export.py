@@ -6,6 +6,7 @@ session.id grouping reads the same value.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import shutil
@@ -18,12 +19,35 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IDA = REPO_ROOT / "plugins" / "ida"
 IDA_HOOKS = IDA / "hooks"
+CREW_HOOKS = REPO_ROOT / "plugins" / "crew" / "hooks"
 if str(IDA_HOOKS) not in sys.path:
     sys.path.insert(0, str(IDA_HOOKS))
 
 import dispatch
-import handlers
 import premise_check_gate as pcg
+
+
+def _load_handlers(alias: str, hooks_dir: Path):
+    """Load one plugin's handlers.py under its own name.
+
+    Several plugins ship a handlers.py, so the bare module name is ambiguous.
+    """
+    spec = importlib.util.spec_from_file_location(alias, hooks_dir / "handlers.py")
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[alias] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+# ida exports the session id for its premise-check verdict script; crew owns
+# session setup, which exports the id too and isolates credentials.
+ida_handlers = _load_handlers("session_export_ida_handlers", IDA_HOOKS)
+crew_handlers = _load_handlers("session_export_crew_handlers", CREW_HOOKS)
+
+BOTH_PLUGINS = pytest.mark.parametrize(
+    "handlers", [ida_handlers, crew_handlers], ids=["ida", "crew"]
+)
 
 SESSION = "0b7c2f4e-1d2a-4c55-9e7d-3f1a2b3c4d5e"
 
@@ -43,7 +67,8 @@ def _ctx(session_id: str = SESSION) -> dispatch.HookContext:
     )
 
 
-def test_session_start_writes_aops_session_id(tmp_path, monkeypatch):
+@BOTH_PLUGINS
+def test_session_start_writes_aops_session_id(handlers, tmp_path, monkeypatch):
     env_file = tmp_path / "env.sh"
     monkeypatch.setenv("CLAUDE_ENV_FILE", str(env_file))
     handlers.session_start(_ctx())
@@ -55,8 +80,8 @@ def test_session_start_keeps_existing_env_file_entries(tmp_path, monkeypatch):
     env_file.write_text("export OTHER=1\n")
     monkeypatch.setenv("CLAUDE_ENV_FILE", str(env_file))
     monkeypatch.setenv("PKB_MCP_URL", "https://pkb.invalid")
-    handlers.session_start(_ctx())
-    values = handlers._read_env_file(env_file)
+    crew_handlers.session_start(_ctx())
+    values = crew_handlers._read_env_file(env_file)
     assert values["OTHER"] == "1"
     assert values["PKB_MCP_URL"] == "https://pkb.invalid"
     assert values["AOPS_SESSION_ID"] == SESSION
@@ -67,8 +92,8 @@ def test_session_start_isolates_git_config_env_vars(tmp_path, monkeypatch):
     monkeypatch.setenv("CLAUDE_ENV_FILE", str(env_file))
     monkeypatch.setenv("GIT_CONFIG_GLOBAL", "/custom/gitconfig")
     monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
-    handlers.session_start(_ctx())
-    values = handlers._read_env_file(env_file)
+    crew_handlers.session_start(_ctx())
+    values = crew_handlers._read_env_file(env_file)
     assert values["GIT_CONFIG_GLOBAL"] == "/custom/gitconfig"
     assert values["GIT_CONFIG_NOSYSTEM"] == "1"
     assert "GIT_CONFIG_GLOBAL" not in os.environ
@@ -83,8 +108,8 @@ def test_session_start_git_isolation_on_when_aops_git_config_global_set(tmp_path
     monkeypatch.delenv("GIT_CONFIG_GLOBAL", raising=False)
     monkeypatch.delenv("GIT_CONFIG_NOSYSTEM", raising=False)
     monkeypatch.setenv("AOPS_GIT_CONFIG_GLOBAL", str(custom_config))
-    handlers.session_start(_ctx())
-    values = handlers._read_env_file(env_file)
+    crew_handlers.session_start(_ctx())
+    values = crew_handlers._read_env_file(env_file)
     assert values["GIT_CONFIG_GLOBAL"] == str(custom_config)
     assert values["GIT_CONFIG_NOSYSTEM"] == "1"
 
@@ -95,13 +120,14 @@ def test_session_start_git_isolation_off_when_aops_git_config_global_unset(tmp_p
     monkeypatch.delenv("GIT_CONFIG_GLOBAL", raising=False)
     monkeypatch.delenv("GIT_CONFIG_NOSYSTEM", raising=False)
     monkeypatch.delenv("AOPS_GIT_CONFIG_GLOBAL", raising=False)
-    handlers.session_start(_ctx())
-    values = handlers._read_env_file(env_file)
+    crew_handlers.session_start(_ctx())
+    values = crew_handlers._read_env_file(env_file)
     assert "GIT_CONFIG_GLOBAL" not in values
     assert "GIT_CONFIG_NOSYSTEM" not in values
 
 
-def test_each_session_writes_its_own_id(tmp_path, monkeypatch):
+@BOTH_PLUGINS
+def test_each_session_writes_its_own_id(handlers, tmp_path, monkeypatch):
     """A nested session inheriting a parent's AOPS_SESSION_ID still writes its
     own: the premise-check gate keys its state by this session's id."""
     env_file = tmp_path / "env.sh"

@@ -49,8 +49,8 @@ _policy = tomllib.loads(_POLICY_FILE.read_text(encoding="utf-8")) if _POLICY_FIL
 
 
 def _require_evaluate_enabled():
-    if not _policy.get("rbg", {}).get("evaluate", {}).get("enabled", True):
-        pytest.skip("rbg evaluate hook is disabled by policy")
+    if not _policy.get("crew", {}).get("evaluate", {}).get("enabled", True):
+        pytest.skip("crew evaluate hook is disabled by policy")
 
 
 _CLIENTS = ("claude", "agy")
@@ -147,7 +147,7 @@ def _build_real_plugins(root: Path) -> None:
 def dist_root(build_once) -> Path:
     """The real plugins, really built — every plugin, both clients.
 
-    This is the tree the execution tests run hooks out of, and rbg's hook has
+    This is the tree the execution tests run hooks out of, and crew's hook has
     nothing to do unless at least one rule is live —
     `test_every_axiom_is_live_in_the_built_clients` holds that the shipped
     axioms are. Assertions about what the build EMITS use `pristine_dist`,
@@ -529,8 +529,8 @@ def test_ida_shipped_subagent_stop_only_traces(dist_root, tmp_path):
       so the hook emits nothing — never ``decision: "block"``.
     - OTel instrumentation: ``detect_agent_idle_timeout`` and
       ``record_subagent_stop`` live in ``evaluator_otel_trace``, which ships
-      in rbg, not ida. ida's dispatch cannot import it, so it records nothing
-      even with the trace path set — rbg's own SubagentStop hook stays the
+      in crew, not ida. ida's dispatch cannot import it, so it records nothing
+      even with the trace path set — crew's own SubagentStop hook stays the
       only recorder, and nothing is counted twice.
 
     Run once to warm the plugin's venv, so the stderr assertions measure the
@@ -639,7 +639,7 @@ def test_cope_shipped_hook_flags_the_axiom_it_ships_for(dist_root, stub_evaluato
     matching policy. It names halt-on-failure and echoes the call. Exit 0 alone
     would also be satisfied by a hook that does nothing."""
     _require_evaluate_enabled()
-    build_dir = dist_root / "rbg-claude"
+    build_dir = dist_root / "crew-claude"
     commands = _hook_commands("claude", build_dir)
     assert commands, "aops-cope-claude ships no hook command"
 
@@ -662,7 +662,7 @@ def test_cope_shipped_hook_tells_the_person_watching_which_rule_was_flagged(
     the person whose rules these are. Without it the check runs, corrects the
     agent, and never surfaces — leaving them nothing to decide on."""
     _require_evaluate_enabled()
-    build_dir = dist_root / "rbg-claude"
+    build_dir = dist_root / "crew-claude"
     _, command = _hook_commands("claude", build_dir)[0]
     proc = _run_shipped_hook(
         "claude", build_dir, command, _PAYLOADS["PreToolUse"], env_overrides=stub_evaluator_env
@@ -676,7 +676,7 @@ def test_cope_shipped_hook_tells_the_person_watching_which_rule_was_flagged(
     assert (build_dir / "hooks" / "messages" / "verdict.user.md").is_file()
 
 
-def test_rbg_shipped_hook_reports_a_degradation_out_of_the_built_artifact(
+def test_crew_shipped_hook_reports_a_degradation_out_of_the_built_artifact(
     dist_root, stub_evaluator_env, tmp_path
 ):
     """The framework's own failure, reported, out of the built artifact.
@@ -685,7 +685,7 @@ def test_rbg_shipped_hook_reports_a_degradation_out_of_the_built_artifact(
     the report has to name the file — the only person who can fix it needs to
     know which one. It goes to stderr and nowhere else: the response channel
     for degradation notices went with lib/hooks/degraded.py (89733bf8), and the
-    current contract is stated in plugins/rbg/hooks/evaluator.py's module
+    current contract is stated in plugins/crew/hooks/evaluator.py's module
     docstring. The check that the notice still carries its detail is what
     survived that change, so that is what is asserted.
 
@@ -698,7 +698,7 @@ def test_rbg_shipped_hook_reports_a_degradation_out_of_the_built_artifact(
     (project / ".agents" / "rules").mkdir(parents=True)
     (project / ".agents" / "rules" / "unreadable.md").mkdir()  # a rule file that is not a file
 
-    build_dir = dist_root / "rbg-claude"
+    build_dir = dist_root / "crew-claude"
     _, command = _hook_commands("claude", build_dir)[0]
     proc = _run_shipped_hook(
         "claude",
@@ -719,7 +719,7 @@ def test_rbg_shipped_hook_reports_a_degradation_out_of_the_built_artifact(
     assert "permissionDecision" not in out["hookSpecificOutput"]
 
 
-def test_rbg_shipped_hook_is_a_silent_no_op_with_no_evaluator_configured(dist_root):
+def test_crew_shipped_hook_is_a_silent_no_op_with_no_evaluator_configured(dist_root):
     """The shipped default. The plugin bakes in no endpoint, so an installation
     that has not configured one must cost the session nothing on every tool
     call: no advisory, no error, no stderr.
@@ -731,7 +731,7 @@ def test_rbg_shipped_hook_is_a_silent_no_op_with_no_evaluator_configured(dist_ro
     EMPTY, not merely free of anything that looks like a complaint.
     """
     _require_evaluate_enabled()
-    build_dir = dist_root / "rbg-claude"
+    build_dir = dist_root / "crew-claude"
     _, command = _hook_commands("claude", build_dir)[0]
     unconfigured = dict.fromkeys(
         (
@@ -754,7 +754,7 @@ def test_rbg_shipped_hook_is_a_silent_no_op_with_no_evaluator_configured(dist_ro
     assert proc.stderr.strip() == ""
 
 
-def test_rbg_shipped_hook_traces_every_rule_evaluated_not_only_the_matches(
+def test_crew_shipped_hook_traces_every_rule_evaluated_not_only_the_matches(
     dist_root, stub_evaluator_env, tmp_path
 ):
     """End-to-end proof that tracing is wired into the shipped artifact: set
@@ -764,9 +764,9 @@ def test_rbg_shipped_hook_traces_every_rule_evaluated_not_only_the_matches(
     set built from the flags alone could never show what an unflagged rule was
     asked and answered, which is the whole reason every evaluation is traced."""
     _require_evaluate_enabled()
-    build_dir = dist_root / "rbg-claude"
+    build_dir = dist_root / "crew-claude"
     _, command = _hook_commands("claude", build_dir)[0]
-    trace_path = tmp_path / "trace" / "rbg-eval-trace.jsonl"
+    trace_path = tmp_path / "trace" / "crew-eval-trace.jsonl"
     env = dict(stub_evaluator_env)
     env["COPE_EVALUATOR_TRACE_PATH"] = str(trace_path)
 
@@ -810,17 +810,17 @@ def test_rbg_shipped_hook_traces_every_rule_evaluated_not_only_the_matches(
 # block) and structurally (the source cannot construct a refusal at all).
 
 
-def test_shipped_rbg_hook_can_never_emit_a_blocking_decision(dist_root, stub_evaluator_env):
-    """rbg's rule check is advisory, permanently. Run its shipped PreToolUse
+def test_shipped_crew_hook_can_never_emit_a_blocking_decision(dist_root, stub_evaluator_env):
+    """crew's rule check is advisory, permanently. Run its shipped PreToolUse
     hook on the payload most likely to provoke a block — a call its evaluator
     flags — under a headless environment, and require the advisory shape and
     nothing else.
 
-    Scoped to `PreToolUse`. rbg's `Stop`/`SubagentStop` gate does carry a
+    Scoped to `PreToolUse`. crew's `Stop`/`SubagentStop` gate does carry a
     disposition, and legitimately: what it withholds is the stop, not the tool
-    call. Its coverage is tests/test_rbg_stop_gate.py."""
+    call."""
     _require_evaluate_enabled()
-    build_dir = dist_root / "rbg-claude"
+    build_dir = dist_root / "crew-claude"
     proc = _run_shipped_hook(
         "claude",
         build_dir,
@@ -876,24 +876,24 @@ def test_every_axiom_is_live_in_the_built_clients(pristine_dist, tmp_path, monke
     marked anything else ships as reading material that no session is given, so
     a misspelt marker silently drops the axiom.
     """
-    source = _REPO_ROOT / "plugins" / "rbg" / "skills" / "axioms"
+    source = _REPO_ROOT / "plugins" / "crew" / "skills" / "axioms"
     slugs = {p.stem for p in source.glob("*.md")} - {"README", "SKILL"}
     assert "proportionate" in slugs
 
-    jsonl = (pristine_dist / "rbg-claude" / "axioms.jsonl").read_text(encoding="utf-8")
+    jsonl = (pristine_dist / "crew-claude" / "axioms.jsonl").read_text(encoding="utf-8")
     assert {json.loads(line)["slug"] for line in jsonl.splitlines()} == slugs
-    assert {p.stem for p in (pristine_dist / "rbg-agy" / "rules").glob("*.md")} == slugs
+    assert {p.stem for p in (pristine_dist / "crew-agy" / "rules").glob("*.md")} == slugs
 
     monkeypatch.delenv("COPE_USER_RULES_DIR", raising=False)
     spec = importlib.util.spec_from_file_location(
-        "rbg_rules", _REPO_ROOT / "plugins" / "rbg" / "hooks" / "rules.py"
+        "crew_rules", _REPO_ROOT / "plugins" / "crew" / "cope_hooks_disabled" / "rules.py"
     )
     assert spec is not None and spec.loader is not None
     rules = importlib.util.module_from_spec(spec)
-    monkeypatch.setitem(sys.modules, "rbg_rules", rules)  # dataclass resolves its module here
+    monkeypatch.setitem(sys.modules, "crew_rules", rules)  # dataclass resolves its module here
     spec.loader.exec_module(rules)
 
-    loaded = rules.load(pristine_dist / "rbg-claude", tmp_path)
+    loaded = rules.load(pristine_dist / "crew-claude", tmp_path)
     assert {s for s, r in loaded.items() if r.trigger == rules.TRIGGER_ON} == slugs
 
     readme = (source / "README.md").read_text(encoding="utf-8")
@@ -988,8 +988,8 @@ def test_registered_handler_events_are_exactly_the_wired_events(dist_root):
             # If a plugin is entirely disabled by policy, we allow it to register nothing.
             is_disabled = False
             if (
-                name == "rbg"
-                and not _policy.get("rbg", {}).get("evaluate", {}).get("enabled", True)
+                name == "crew"
+                and not _policy.get("crew", {}).get("evaluate", {}).get("enabled", True)
                 or name == "ida"
                 and not _policy.get("ida", {}).get("strip_the_reply_enabled", True)
                 or name in ("aops", "pkb")
@@ -1024,13 +1024,13 @@ def test_registered_handler_events_are_exactly_the_wired_events(dist_root):
                 allowed_missing.update(_wires_for("PostToolBatch"))
             if not p.get("honest_output_enabled", True):
                 allowed_missing.update(_wires_for("SubagentStart"))
-        elif name == "rbg":
-            if not _policy.get("rbg", {}).get("evaluate", {}).get("enabled", True):
+        elif name == "crew":
+            if not _policy.get("crew", {}).get("evaluate", {}).get("enabled", True):
                 allowed_missing.update(_wires_for("PreToolUse"))
-            if not _policy.get("rbg", {}).get("stop_gate", {}).get("stop_events"):
+            if not _policy.get("crew", {}).get("stop_gate", {}).get("stop_events"):
                 allowed_missing.update(_wires_for("Stop"))
                 allowed_missing.update(_wires_for("SubagentStop"))
-            if not _policy.get("rbg", {}).get("inject_ruleset", {}).get("enabled", False):
+            if not _policy.get("crew", {}).get("inject_ruleset", {}).get("enabled", False):
                 allowed_missing.update(_wires_for("UserPromptSubmit"))
         elif name == "ida" and not _policy.get("ida", {}).get("strip_the_reply_enabled", True):
             allowed_missing.update(_wires_for("PostToolBatch"))

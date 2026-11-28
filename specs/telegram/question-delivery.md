@@ -22,7 +22,6 @@ As an operator interacting with an agent over Telegram, I want every question re
 As an autonomous agent asking a user question over Telegram, I want infrastructure and delivery failures to halt loudly and surface immediately, so that I am never told a question was posted when it was not delivered and never end my turn waiting for an impossible answer.
 
 - **AC-2.1** Given a question with chat delivery requested, when the communication client is not running, the target chat identifier is missing, or the messaging API fails, then the tool returns an error result with error signaling enabled rather than reporting that the question was posted.
-- **AC-2.2** Given the asking tool's execution hook is invoked in a primary Telegram environment, when the transport socket is missing, the connection fails, or a delivery error is received, then the hook writes the failure description to standard error and halts execution with a non-zero exit code rather than claiming successful delivery or falling back silently.
 
 ## Design
 
@@ -42,11 +41,3 @@ Before returning success to an asking agent:
    - Record the message identifier on the question record;
    - If delivery fails at any step, return an explicit error payload and do not claim delivery.
 2. Only return success if the question was either confirmed delivered to the chat interface or explicitly designated for web interface delivery only.
-
-### 3. Fail-Fast Execution on Transport Failure
-
-When the question execution hook operates in a designated primary Telegram environment:
-
-1. If the transport socket does not exist or connection fails, the hook writes the failure to standard error and halts execution with exit code 1.
-2. If the response indicates delivery failure or unparseable output, the hook writes the failure to standard error and halts execution with exit code 1.
-3. The hook emits a blocking denial payload confirming delivery only when the question transport explicitly confirms delivery with a valid question identifier. Silent fallback branches to standard terminal prompts are prohibited when operating in a primary Telegram environment.

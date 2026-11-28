@@ -37,7 +37,7 @@ jobs:
         run: |
           PROMPT=$(cat << 'EOF'
 
-          1. Read the universal axioms located in `.agents/rules/*.md`. These are your single source of truth.
+          1. Read the universal axioms in `plugins/crew/skills/axioms/*.md` and the project rules in `.agents/rules/*.md`. These are your single source of truth.
           2. Review the changes in PR #$PR_NUMBER for for violations of the universal axioms.
           3. If you find clear, fixable violations, fix them directly: edit the files, commit, and push to the PR branch.
           4. For violations that require developer judgment or cannot be safely auto-fixed, you MUST request changes via a native GitHub PR review with line-level comments. Do NOT just post a standard issue comment.
@@ -80,7 +80,7 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: ${{ steps.prompt.outputs.prompt }}
           # Allow Claude full bash and write tools so it can run gh api and git commit
-          claude_args: "--model sonnet --agent rbg"
+          claude_args: "--model sonnet"
           show_full_output: true
 
       - name: Check OTel tracer status

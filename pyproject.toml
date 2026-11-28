@@ -18,8 +18,8 @@ dependencies = [
   "streamlit>=1.54.0",
   "claude-code-log>=1.5.0",
   # OTel span emission, declared for every plugin in
-  # templates/plugin/pyproject.template.toml (see plugins/rbg/hooks/evaluator_otel_trace.py,
-  # plugins/ida/hooks/claude_code_tracer.py, plugins/ida/hooks/agy_tracer.py) —
+  # templates/plugin/pyproject.template.toml (see lib/hooks/claude_code_tracer.py,
+  # plugins/crew/hooks/agy_tracer.py) —
   # duplicated here, like every other plugin-scoped dependency, so the shared
   # dev venv basedpyright and pytest run under can resolve it too.
   "opentelemetry-sdk>=1.40.0",
@@ -208,6 +208,7 @@ exclude = [
   "**/venv",
   "plugins.disabled",
   "plugins.disabled/**",
+  "plugins/crew/cope_hooks_disabled/", # Disabled rule-check hooks, kept unwired
   "plugins/*/agents/", # Exclude non-code agent configs
   "plugins/*/commands/", # Exclude command specs
   "plugins/*/skills/", # Exclude skill definitions (markdown/YAML)
@@ -222,7 +223,7 @@ ignore = ["**/site-packages"]
 # Python path for internal imports
 extraPaths = [
   "lib/hooks",
-  "plugins/rbg/hooks",
+  "plugins/crew/hooks",
   "plugins/ida/hooks",
   "plugins/aops-debug/hooks",
   "plugins/tools/hooks",

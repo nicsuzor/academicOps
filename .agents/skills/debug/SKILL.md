@@ -29,7 +29,7 @@ Spawn independent shell agents in the background without polling or sleeping; wa
 - **Refresh current-state notes**: Search the PKB for a current-state note on target surfaces, treat it as a dated observation for its named build, re-run relied cells, and rewrite the note in place.
 - **Create a tracking task before return**: Link a parent in the PKB naming the dispatch, expected output, and acceptance criteria from `specs/` or the PKB (inability to locate a spec is itself a framework finding).
 - **Discriminate before scoring**: Name the observation separating your verdict from the rival explanation (file `undetermined` if absent). For broken-mechanism asks (auth, tokens, services), trace the full lifecycle -- prior failing logs/traces, token refresh, state transitions, and read-only mounts -- rather than treating a fresh startup check as refutation.
-- **Score tool records, never self-reports**: Verify execution via `ida:phoenix` spans, `agy` `transcript_full.jsonl` (`tool_calls`), or `claude` session JSONL (`tool_use`); agents can read stale files and report cached output as live calls.
+- **Score tool records, never self-reports**: Verify execution via `crew:phoenix` spans, `agy` `transcript_full.jsonl` (`tool_calls`), or `claude` session JSONL (`tool_use`); agents can read stale files and report cached output as live calls.
 - **Audit on completion**: Claim the tracking record, assess outputs against acceptance criteria, audit and correct the worker's task state, and route significant lessons to `learn`.
 
 ## Probes and Container Driving
@@ -49,5 +49,5 @@ Walk these layers in order after changing `plugins/*/hooks`, `lib/`, or skills; 
 4. **Boot signals**: `claude` renders banner and `❯` in `/workspace`; `agy` clears the 2-3 s auth race and renders its plan name.
 5. **First prompt**: Send a tool-calling prompt and assert the model output or tool-call record in the pane or transcript.
 6. **Exercise changed path**: Invoke the modified skill, hook, or tool call and capture execution output.
-7. **Audit**: Verify non-error `TOOL` spans via `ida:phoenix` and run the host filesystem audit (`run.json` and `polecat-session-hooks.jsonl`).
+7. **Audit**: Verify non-error `TOOL` spans via `crew:phoenix` and run the host filesystem audit (`run.json` and `polecat-session-hooks.jsonl`).
 8. **Teardown**: Send `/exit`, wait for transcript flush (`sleep 2`), and kill the tmux session.

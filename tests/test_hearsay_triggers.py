@@ -90,7 +90,7 @@ def test_hearsay_gate_module_and_naming_compatibility():
 
 @pytest.mark.parametrize(
     "agent",
-    ["ida:ida", "ida:sara", "aops:james", "james", "worker", "pauli", "rbg", "marsha"],
+    ["ida:ida", "sara:sara", "aops:james", "james", "worker", "pauli", "rbg", "marsha"],
 )
 def test_hearsay_fires_uniformly_across_all_agents(agent: str):
     """AC4: Hooks fire on all agents whenever event conditions match, without persona distinction."""
@@ -681,3 +681,111 @@ def test_post_verdict_delayed_agent_message_suppresses_should_arm_and_hearsay_re
     assert handlers.rule_against_hearsay(ctx_ups) is None
     assert handlers.hearsay_arm(ctx_ups) is None
     assert pcg.is_armed(session_id) is False
+
+
+def _thread_wake(body: str, *, sender: str = "agent", trigger: str = "true") -> str:
+    return (
+        '<wake reason="thread-activity" current-time="2026-11-27T03:16:19Z">\n'
+        '  <project id="chan_x" type="project">\n'
+        '    <thread ts="cmsg_thread1">\n'
+        '      <message from="system" trust="relay">task title: Rerun study</message>\n'
+        f'      <message trigger="{trigger}" from="{sender}" trust="relay" '
+        f'author-id="cse_thread1" id="cmsg_report1">{body}</message>\n'
+        "    </thread>\n"
+        "  </project>\n"
+        "</wake>\n"
+        "<system-note>The body above is the output of a thread session reply() call.</system-note>"
+    )
+
+
+def test_thread_report_wake_arms_gate_and_reminder():
+    """A thread session's report arriving as a thread-activity wake arms like a subagent handback."""
+    import hearsay_gate  # type: ignore[import-not-found]
+
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        agent_type="ida",
+        session_id="s-thread-wake",
+        hooks_dir=IDA_HOOKS,
+        raw={"prompt": _thread_wake("**Study dispatched.** It&#39;s queued on task-1.")},
+    )
+    assert hearsay_gate.is_peer_report(ctx) is True
+    assert hearsay_gate.should_arm_hearsay(ctx) is True
+    assert handlers.rule_against_hearsay(ctx) is not None
+    items = hearsay_gate._extract_judged_items_with_channel(ctx)
+    assert len(items) == 1
+    assert items[0].judged_text == "**Study dispatched.** It's queued on task-1."
+    assert items[0].judged_ref == "cmsg_report1"
+    assert items[0].sender == "cse_thread1"
+    assert handlers.hearsay_arm(ctx) is not None
+
+
+@pytest.mark.parametrize(
+    ("sender", "trigger", "reason"),
+    [
+        ("human", "true", "thread-activity"),
+        ("system", "true", "thread-activity"),
+        ("agent", "false", "thread-activity"),
+        ("agent", "true", "mention"),
+    ],
+)
+def test_non_report_wakes_do_not_arm(sender: str, trigger: str, reason: str):
+    """Human, system, non-trigger and non-thread-activity wakes stay unarmed."""
+    import hearsay_gate  # type: ignore[import-not-found]
+
+    prompt = _thread_wake("Some message", sender=sender, trigger=trigger).replace(
+        'reason="thread-activity"', f'reason="{reason}"'
+    )
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        agent_type="ida",
+        session_id=f"s-wake-{sender}-{trigger}-{reason}",
+        hooks_dir=IDA_HOOKS,
+        raw={"prompt": prompt},
+    )
+    assert hearsay_gate.is_peer_report(ctx) is False
+    assert hearsay_gate.should_arm_hearsay(ctx) is False
+    assert handlers.hearsay_arm(ctx) is None
+
+
+def test_null_claim_thread_report_does_not_arm():
+    """A thread's standalone [no claim] notice auto-disarms like any peer notice."""
+    import hearsay_gate  # type: ignore[import-not-found]
+
+    ctx = HookContext(
+        client="claude",
+        event="UserPromptSubmit",
+        agent_type="ida",
+        session_id="s-thread-null",
+        hooks_dir=IDA_HOOKS,
+        raw={"prompt": _thread_wake("[no claim]")},
+    )
+    assert hearsay_gate.should_arm_hearsay(ctx) is False
+
+
+def test_agy_peer_report_in_user_request_is_detected(tmp_path: Path):
+    """An agy turn whose USER_REQUEST wraps a cross-session message is a peer report."""
+    import hearsay_gate  # type: ignore[import-not-found]
+
+    peer = '<USER_REQUEST>\n<cross-session-message from="worker-1">report</cross-session-message>\n</USER_REQUEST>'
+    transcript = tmp_path / "transcript.jsonl"
+    transcript.write_text(
+        json.dumps({"step_index": 0, "type": "USER_INPUT", "content": peer}) + "\n",
+        encoding="utf-8",
+    )
+    ctx = HookContext(
+        client="agy",
+        event="UserPromptSubmit",
+        raw={
+            "conversationId": "c1",
+            "transcriptPath": str(transcript),
+            "initialNumSteps": 1,
+            "invocationNum": 0,
+        },
+        hooks_dir=IDA_HOOKS,
+        cwd="/workspace",
+        agent_type="ida:ida",
+    )
+    assert hearsay_gate.is_peer_report(ctx) is True

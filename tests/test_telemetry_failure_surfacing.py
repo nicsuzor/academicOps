@@ -5,6 +5,7 @@ Covers AC-1.1 through AC-4.2 of specs/observability/telemetry-failure-surfacing.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import sys
@@ -16,11 +17,11 @@ from opentelemetry.sdk.trace.export import SpanExportResult
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 IDA_HOOKS = REPO_ROOT / "plugins" / "ida" / "hooks"
-RBG_HOOKS = REPO_ROOT / "plugins" / "rbg" / "hooks"
+CREW_HOOKS = REPO_ROOT / "plugins" / "crew" / "hooks"
 SCRIPTS_DIR = REPO_ROOT / "scripts"
 
-# Make sure IDA_HOOKS is first in sys.path so handlers imports from ida
-for p in (str(SCRIPTS_DIR), str(RBG_HOOKS), str(IDA_HOOKS)):
+# IDA_HOOKS goes first: other test modules import ida's handlers.py by its bare name.
+for p in (str(SCRIPTS_DIR), str(IDA_HOOKS)):
     if p in sys.path:
         sys.path.remove(p)
     sys.path.insert(0, p)
@@ -28,10 +29,17 @@ for p in (str(SCRIPTS_DIR), str(RBG_HOOKS), str(IDA_HOOKS)):
 import ci_otel_hooks
 import claude_code_tracer
 import dispatch
-import evaluator_otel_trace
-import handlers
 import premise_check_gate
 import premise_check_verdict
+
+# crew owns session setup and the telemetry diagnostic handler.
+_handlers_spec = importlib.util.spec_from_file_location(
+    "telemetry_crew_handlers", CREW_HOOKS / "handlers.py"
+)
+assert _handlers_spec is not None and _handlers_spec.loader is not None
+handlers = importlib.util.module_from_spec(_handlers_spec)
+sys.modules["telemetry_crew_handlers"] = handlers
+_handlers_spec.loader.exec_module(handlers)
 
 
 @pytest.fixture(autouse=True)
@@ -138,29 +146,6 @@ def test_unconfigured_ci_emits_notice(capsys, tmp_path):
     assert "::notice::Trace endpoint unset; run untraced" in captured.out
     assert "NOTICE: OpenTelemetry tracing unconfigured in CI" in captured.out
     assert settings == base
-
-
-def test_unconfigured_rbg_evaluator_emits_notice(capsys, tmp_path):
-    """AC-4.1: rbg-evaluator emits notice on stderr once when unconfigured."""
-    ctx = dispatch.HookContext(
-        client="claude",
-        event="PreToolUse",
-        session_id="test-rbg-1",
-        tool="Bash",
-    )
-    eval_config = MagicMock()
-    # Reset warned state if previously set
-    evaluator_otel_trace.sink_for._unconfigured_warned = False
-
-    sink = evaluator_otel_trace.sink_for(
-        config=None,
-        ctx=ctx,
-        eval_config=eval_config,
-        loaded={},
-    )
-    assert sink is None
-    captured = capsys.readouterr()
-    assert "NOTICE: rbg evaluator OTel tracing unconfigured" in captured.err
 
 
 # ==============================================================================

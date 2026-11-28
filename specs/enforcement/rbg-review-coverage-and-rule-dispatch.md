@@ -6,7 +6,7 @@ tags: [enforcement, pr-review, rbg, compliance, review-pipeline]
 
 # Pull Request Review Compliance and RBG Verdict Enforcement
 
-This specification defines the architectural contracts, review verification gates, and authoring invariants that ensure every pull request reviewed by autonomous agents carries an authoritative, independent rule-compliance (`rbg`) verdict, eliminating unverified generalist review passes, preventing agent-as-user specification antipatterns, preserving the strict boundaries of the universal enforcement map, and preventing the creation of bespoke rules where native platform mechanisms exist.
+This specification defines the architectural contracts, review verification gates, and authoring invariants that ensure every pull request reviewed by autonomous agents carries an authoritative, independent rule-compliance verdict (`## RBG Review`), eliminating unverified generalist review passes, preventing agent-as-user specification antipatterns, preserving the strict boundaries of the universal enforcement map, and preventing the creation of bespoke rules where native platform mechanisms exist.
 
 ## User stories
 
@@ -45,7 +45,7 @@ As a project planner, I want decisions between alternative options to remain as 
 
 A pull request review is incomplete and must not satisfy review obligations or mark review tasks as completed unless it includes an explicit rule-compliance verdict (`PASS`, `REVISE`, or `FAIL`) posted on the pull request by an independent reviewer who authored none of the commits under review.
 
-- **Independent specialist dispatch**: When executing pull request review workflows (`wf-pr-clear`, `wf-pr-sweep`, `wf-dialectical-review`, `strategic-review`), reviews must not be collapsed into a monolithic generalist prompt. The review pipeline must explicitly dispatch the specialist compliance reviewer (`rbg` executing `wf-rbg`) alongside quality (`marsha`) and strategic congruence (`pauli`).
+- **Independent specialist dispatch**: When executing pull request review workflows (`wf-pr-clear`, `wf-pr-sweep`, `wf-dialectical-review`, `strategic-review`), reviews must not be collapsed into a monolithic generalist prompt. The review pipeline must explicitly dispatch the specialist compliance review (`wf-rbg`) as its own invocation alongside the quality and strategic-congruence reviews.
 - **Review satisfaction predicate**: Verification checks asserting review completion must verify the presence of the compliance verdict on GitHub, rejecting syntactic reviews that lack specialist rule evaluations.
 - **Independence verification**: The reviewing agent must confirm via git author metadata that it authored zero commits on the branch under review.
 
@@ -90,11 +90,11 @@ The rules and surfaces touched by the observed defect classes have specific curr
 
 | Governed Rule | Current Carrier Mechanism | Current Severity | Documented Coordinates in `specs/ENFORCEMENT-MAP.md` |
 | :- | :- | :- | :- |
-| **Rule-Compliance Review Lens** | process | required gate | `specs/ENFORCEMENT-MAP.md:13`, `plugins/rbg/agents/rbg.md`, `wf-rbg.md`, `specs/enforcement/enforcement.md:129` |
+| **Rule-Compliance Review Lens** | process | required gate | `specs/ENFORCEMENT-MAP.md:13`, `wf-rbg.md`, `specs/enforcement/enforcement.md:129` |
 | **Name the Process, Not the Actor** | instructions, process | imperative, required gate | `specs/ENFORCEMENT-MAP.md:13`, `.agents/rules/process-not-actor.md:1-13`, `specs/meta/writing-specs.md:21-28` |
-| **Use the Native Mechanism** | instructions, structural | imperative, protection | `.agents/rules/use-native-mechanism.md:1-13`, `plugins/rbg/skills/axioms/no-over-engineering.md:1-20` |
+| **Use the Native Mechanism** | instructions, structural | imperative, protection | `.agents/rules/use-native-mechanism.md:1-13`, `plugins/crew/skills/axioms/no-over-engineering.md:1-20` |
 | **Enforcement Map Boundary & Schema** | instructions, process | imperative, required gate | `specs/ENFORCEMENT-MAP.md:7`, `specs/enforcement/enforcement-map.md:20-55`, `specs/enforcement/enforcement.md:23-42` |
-| **Decisions Emerge from Graph Relationships** | instructions, process | advisory, routing | `specs/ENFORCEMENT-MAP.md:22`, `.agents/rules/RULES.md:85-102`, `plugins/ida/skills/decompose/SKILL.md:28-36` |
+| **Decisions Emerge from Graph Relationships** | instructions, process | advisory, routing | `specs/ENFORCEMENT-MAP.md:22`, `.agents/rules/RULES.md:85-102`, `plugins/crew/skills/decompose/SKILL.md:28-36` |
 | **Document Taxonomy Placement** | instructions, process | imperative, required gate | `specs/ENFORCEMENT-MAP.md:59`, `specs/meta/doc-taxonomy.md:1-100`, `.agents/rules/RULES.md:28-34` |
 
 ### 4. One-Step Fix per Defect Class (Least Invasive First)
@@ -127,16 +127,16 @@ flowchart TD
 
 - **Level of Intervention**: `instructions` (`imperative`) and `process` (`required gate`).
 - **Remedy**:
-  1. Update `wf-pr-clear` obligation 4 to explicitly forbid monolithic subagent fallback: reviewing unreviewed pull requests must dispatch the specialist `rbg` compliance reviewer (`wf-rbg`).
+  1. Update `wf-pr-clear` obligation 4 to explicitly forbid monolithic subagent fallback: reviewing unreviewed pull requests must dispatch the specialist compliance review (`wf-rbg`).
   2. In pull request review task templates (`wf-code-task-base`, `wf-dialectical-review`), strengthen the acceptance criteria contract: review tasks cannot be marked `[x]` or released as `done` with mere evidence of a review link; acceptance requires the review link AND a valid recorded specialist rule-compliance verdict (`PASS`, `REVISE`, or `FAIL`).
-- **Outcome-Level Criteria**: 100% of pull requests cleared by automated workers carry an independent specialist RBG compliance review posted on GitHub before the review task is released as `done`.
+- **Outcome-Level Criteria**: 100% of pull requests cleared by automated workers carry an independent specialist compliance review (`## RBG Review`) posted on GitHub before the review task is released as `done`.
 
 #### Class 2 Fix: Codification of Human User Stories in Specifications
 
 - **Level of Intervention**: `instructions` (`imperative`) and `process` (`required gate`).
 - **Remedy**:
   1. Update `specs/meta/writing-specs.md` and `.agents/rules/process-not-actor.md` to explicitly state: the subject of a user story (`As a <role>`) must always be a human person whom the system serves; agents do not want anything, and capabilities are granted solely to fulfill human user requirements.
-  2. Update the RBG compliance review lens (`plugins/rbg/agents/rbg.md`, `wf-rbg.md`) to verify during specification review that zero user stories cast agents as users, returning an immediate `REVISE` or `FAIL` on violation.
+  2. Update the compliance review lens (`wf-rbg.md`) to verify during specification review that zero user stories cast agents as users, returning an immediate `REVISE` or `FAIL` on violation.
 - **Outcome-Level Criteria**: 0 specifications in the repository cast agents, workers, or personas as the subject of user stories.
 
 #### Class 3 Fix: Enforcement Register Scope Restriction and Native Platform Adoption
@@ -144,15 +144,15 @@ flowchart TD
 - **Level of Intervention**: `instructions` (`imperative`) and `process` (`required gate`).
 - **Remedy**:
   1. In `specs/enforcement/enforcement-map.md` and `specs/ENFORCEMENT-MAP.md`, codify that the global enforcement map contains strictly axiom-derived universal rules governing agent conduct across third-party repositories; repository-local rules and operational workflows are excluded.
-  2. In the RBG compliance review instructions, add an explicit check enforcing `.agents/rules/use-native-mechanism.md`: reject proposals creating synthetic rule files where native platform configuration directories exist (e.g. GitHub issue templates belong in `.github/ISSUE_TEMPLATE/`).
+  2. In the compliance review instructions (`wf-rbg.md`), add an explicit check enforcing `.agents/rules/use-native-mechanism.md`: reject proposals creating synthetic rule files where native platform configuration directories exist (e.g. GitHub issue templates belong in `.github/ISSUE_TEMPLATE/`).
 - **Outcome-Level Criteria**: 0 workflow templates or repository-local rules are registered as rows in `specs/ENFORCEMENT-MAP.md`, and 0 bespoke rules are introduced for features supported natively by the host platform.
 
 #### Class 4 Fix: Decision Graph Modeling Parsimony
 
 - **Level of Intervention**: `instructions` (`advisory` → `imperative`).
 - **Remedy**:
-  1. In `plugins/ida/skills/decompose/SKILL.md` and `.agents/rules/RULES.md` ("Decisions Emerge from Graph Relationships"), add explicit guidance: tasks containing option choices without immediate implementation commitments must remain as single actionable decision tasks containing the choice options and evaluation instructions, rather than minting speculative subtasks.
-  2. In RBG review, evaluate proposed task graph modifications against premature subtask decomposition.
+  1. In `plugins/crew/skills/decompose/SKILL.md` and `.agents/rules/RULES.md` ("Decisions Emerge from Graph Relationships"), add explicit guidance: tasks containing option choices without immediate implementation commitments must remain as single actionable decision tasks containing the choice options and evaluation instructions, rather than minting speculative subtasks.
+  2. In compliance review, evaluate proposed task graph modifications against premature subtask decomposition.
 - **Outcome-Level Criteria**: 100% of open design questions presenting alternative options are structured as single decision tasks, with 0 uncommitted speculative subtasks minted.
 
 ## Open questions

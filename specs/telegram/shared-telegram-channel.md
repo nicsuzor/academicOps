@@ -5,7 +5,7 @@ status: ready
 
 # Shared Telegram channel
 
-The shared Telegram channel provides a unified conversational transport layer between the user on Telegram and the primary conversational agent across both interactive and containerized runtimes. It consolidates update ingestion, sender authorization, rich-text entity formatting, paragraph overflow splitting, voice synthesis, and asynchronous question posting into a single shared engine, ensuring an identical communication contract regardless of host execution topology. Native Bot API 10.1–10.4 Rich Messages and HTML Widgets are specified in [`specs/telegram/rich-messages-and-widgets.md`](rich-messages-and-widgets.md); higher-level dashboard web views operate above this transport layer.
+The shared Telegram channel provides a unified conversational transport layer between the user on Telegram and the primary conversational agent. It consolidates update ingestion, sender authorization, rich-text entity formatting, paragraph overflow splitting, voice synthesis, and asynchronous question posting into a single shared engine. Native Bot API 10.1–10.4 Rich Messages and HTML Widgets are specified in [`specs/telegram/rich-messages-and-widgets.md`](rich-messages-and-widgets.md); higher-level dashboard web views operate above this transport layer.
 
 ## User stories
 
@@ -71,14 +71,11 @@ The lifecycle separates update ingestion and turn dispatch from tool execution:
 2. **Turn Dispatch:** Events queue serially per chat. When the channel dispatches an event, it supplies the persisted session identifier to preserve conversational continuity. If a turn is active and auto-interrupt is enabled, the channel cancels the running turn and launches a replacement turn incorporating the new message.
 3. **Outbound Execution:** During turn execution, the agent calls transport tools (`send_rich_message`, `react`, `ask_user`, `edit_message`). For questions, the channel renders interactive buttons and returns immediately so the turn finishes cleanly. When the user later taps an option, the callback arrives as a new inbound event triggering the next turn.
 
-### Shared channel core and dual transport boundary
+### Shared channel core and transport boundary
 
-The channel core provides identical formatting, overflow handling, question card lifecycle, and voice synthesis across two transport adapters:
+The channel core provides formatting, overflow handling, question card lifecycle, and voice synthesis. Its transport adapter runs it in-process with the host session: the channel polls updates, pushes inbound events into the active turn queue, and handles outbound tool calls directly.
 
-1. **In-session channel transport:** In interactive runtime environments where the host process accepts asynchronous event streaming directly, the channel core runs in-process, polls updates, pushes inbound events into the active turn queue, and handles outbound tool calls directly.
-2. **Container gateway transport:** In headless container environments where turns run as isolated per-turn invocations, a dedicated gateway process hosts the shared channel core and manages local IPC. For each inbound event, the gateway executes the per-turn process with serialized event parameters and the recorded session identifier. Outbound tool calls connect back to the gateway over a local IPC bridge.
-
-Separating the protocol engine from transport adaptation ensures that parsing, formatting, 4,000-character paragraph splitting, voice synthesis, and question state logic remain implemented once without coupling to specific execution runtimes.
+Separating the protocol engine from transport adaptation ensures that parsing, formatting, 4,000-character paragraph splitting, voice synthesis, and question state logic remain implemented once without coupling to a specific execution runtime.
 
 ### Outbound tool contracts
 
@@ -158,7 +155,7 @@ All fourteen outbound send tools (`send_photo`, `send_document`, `send_video`, `
 
 ### State and invariants
 
-- **Single-consumer polling and user channel isolation:** Only a single primary channel or gateway instance polls Telegram updates. Non-primary background worker processes never have access to Telegram tools under any circumstances; direct user communication is reserved exclusively for the primary agent.
+- **Single-consumer polling and user channel isolation:** Only a single primary channel instance polls Telegram updates. Non-primary background worker processes never have access to Telegram tools under any circumstances; direct user communication is reserved exclusively for the primary agent.
 - **Session continuity:** The channel persists mappings between chat identifiers and runtime session identifiers across turns and container restarts.
 - **Asynchronous question lifecycle:** Pending questions are indexed by question identifier. When an agent posts a question, the turn ends; incoming user choices correlate to the pending question identifier and trigger a fresh continuation turn.
 - **Strict failure propagation:** Any process fault, timeout, invalid session identifier, or communication failure halts execution and surfaces raw failure details verbatim, without synthetic fallbacks or silent error retries.

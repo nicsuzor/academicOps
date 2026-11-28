@@ -15,7 +15,7 @@ pytestmark = pytest.mark.integration
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "ci_otel_hooks.py"
-TRACER = REPO_ROOT / "plugins" / "ida" / "hooks" / "claude_code_tracer.py"
+TRACER = REPO_ROOT / "lib" / "hooks" / "claude_code_tracer.py"
 
 _CONFIGURED = {
     "GENAI_ENGINE_TRACE_ENDPOINT": "https://otel.example.test/v1/traces",

@@ -226,7 +226,7 @@ description.
 main (Controlling Agent) [1,250,400 tokens | $3.7512]
 ├── 1. pauli (L1: aops:pauli) [420,100 tokens | $1.2603]
 │   └── 1.1 marsha (L2: aops:marsha) [180,000 tokens | $0.5400]
-└── 2. rbg (L1: aops:rbg) [310,000 tokens | $0.9300]
+└── 2. james (L1: aops:james) [310,000 tokens | $0.9300]
 ```
 
 **Token badges.** Every model turn carrying usage metadata gets one line under
