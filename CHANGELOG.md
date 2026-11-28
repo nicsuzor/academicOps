@@ -1,5 +1,57 @@
 # Changelog
 
+## [1.14.0](https://github.com/nicsuzor/academicOps/compare/v1.13.2...v1.14.0) (2026-11-28)
+
+### Features
+
+- **crew:** hard-deny SSH and use of the user's SSH keys in auto mode ([44238fc](https://github.com/nicsuzor/academicOps/commit/44238fca064021e3f7d53157c29f6e07e615b02c))
+- **wf-qa:** judge the real artifact, never a stand-in ([4003530](https://github.com/nicsuzor/academicOps/commit/40035302d40928eaa5a70c8f8de9ef1bf3ca3b1d))
+- **wf-qa:** judge the real artifact, never a stand-in ([92b78eb](https://github.com/nicsuzor/academicOps/commit/92b78eb8989e2a8ed59d0ddee47ab43d3fbccc52))
+- **workflows:** empirical performance reviews run only on observed traces ([116bb06](https://github.com/nicsuzor/academicOps/commit/116bb0640b87d8cbdbd2040ad82b341a9d1b943b))
+- **workflows:** empirical performance reviews run only on observed traces ([d6e39b6](https://github.com/nicsuzor/academicOps/commit/d6e39b6322f2436bdb6fcec8ad7684a9dd5c434a))
+
+### Bug Fixes
+
+- **hearsay:** arm the gate on thread reports arriving as wakes ([a0c2f97](https://github.com/nicsuzor/academicOps/commit/a0c2f975ceae526938e70211f98a6aa2d9c65d59))
+- **hearsay:** arm the gate on thread reports arriving as wakes ([9d251df](https://github.com/nicsuzor/academicOps/commit/9d251dffca9d31da877126b12be9ece4dfd6aea8))
+- **hooks:** defer root SubagentHandback gate arming until report delivery ([223e152](https://github.com/nicsuzor/academicOps/commit/223e1526ecfd42681c2b5a49f538b9b0347fd843))
+- **hooks:** defer root SubagentHandback gate arming until report delivery ([5a01f8e](https://github.com/nicsuzor/academicOps/commit/5a01f8ec3fbf693d416fe0198a9935663a193088))
+- **ida:** align dispatch skill with polecat server image default and AGY_MODEL ([bd93405](https://github.com/nicsuzor/academicOps/commit/bd934056057b03d21a528c9e3b8debcd35947045))
+- **ida:** align dispatch skill with polecat server image default and AGY_MODEL ([65a7465](https://github.com/nicsuzor/academicOps/commit/65a746506c9b3c598de0881d9bc415b4e38420b5))
+- **ida:** align subagent hearsay gate arming to single report delivery ([697a20b](https://github.com/nicsuzor/academicOps/commit/697a20b88c057458f5c7128e8e0474deea65fa42))
+- **ida:** align subagent hearsay gate arming to single report delivery ([459e8bb](https://github.com/nicsuzor/academicOps/commit/459e8bb7e719907c204a209ca1d1bac08fef1874))
+- **ida:** instruct custodian to re-parent notes found under tasks ([a02c709](https://github.com/nicsuzor/academicOps/commit/a02c709b083fa565fd65d29a3564f298f6a6d58e))
+- **ida:** instruct custodian to re-parent notes found under tasks ([73a6709](https://github.com/nicsuzor/academicOps/commit/73a6709462229a00f49be5ca9a8878105ef9a673))
+- **review:** align hydrate workflow finder spec with writing-specs and rules ([adfeb3c](https://github.com/nicsuzor/academicOps/commit/adfeb3ca2df135a26fb8a37165325a8dd0015544))
+- **review:** generalize dispatch container-launch contract ([d4bc38c](https://github.com/nicsuzor/academicOps/commit/d4bc38ce68ee5c470e10cf687e9b1d1a01fbdb60))
+- **review:** meet craft length limits and harmonize parent targets ([25ed7e8](https://github.com/nicsuzor/academicOps/commit/25ed7e8f99ce27a813cc6c2525cbbc2180196c75))
+- **sara:** prevent sara from forwarding dispatch briefs to peer ([50f4217](https://github.com/nicsuzor/academicOps/commit/50f4217c62b0d9b657d96e70f552c756174c04ab))
+- **sara:** prevent sara from forwarding dispatch briefs to peer ([1895458](https://github.com/nicsuzor/academicOps/commit/189545896f54005f798b2f06c406fe36eb4b0978))
+
+### Code Refactoring
+
+- **crew:** move shared startup rules to crew and repoint pull ([89c37c4](https://github.com/nicsuzor/academicOps/commit/89c37c4af3ea8569ea7ad8d1908f6c05fb966183))
+- **ida-telegram:** remove question hook, local socket and gateway ([13c85df](https://github.com/nicsuzor/academicOps/commit/13c85df89257e2deac331b01ea2691084e6208f9))
+- **otel:** make crew the sole owner of lifecycle tracing; move span pipeline to lib/ ([b729725](https://github.com/nicsuzor/academicOps/commit/b7297250c1be9b994a4a44e24cde953573df6401))
+- **plugins:** move agy to crew and argdown-toulmin to ida ([47dfe66](https://github.com/nicsuzor/academicOps/commit/47dfe6693b12304bdff0526bd10859db9ede905a))
+- **plugins:** restore argdown/hearsay hooks to ida and fix plugin build ([868fb45](https://github.com/nicsuzor/academicOps/commit/868fb45296f722036dbcd790e557773f6a7a4931))
+- **plugins:** split plugins into ida, crew, sara, tools ([73b913c](https://github.com/nicsuzor/academicOps/commit/73b913c56e74883f03c20b228075999fce52c720))
+- **review:** align handback, verification, and axioms on contextual judicial review ([ca32520](https://github.com/nicsuzor/academicOps/commit/ca3252076259417255c48d5b13235f8c84cf22e1))
+- **review:** align handback, verification, and axioms on contextual judicial review ([a9e7602](https://github.com/nicsuzor/academicOps/commit/a9e7602e4f4806643f0d891524ae01d1efafff74))
+- **split:** custodian reifies before dispatch; polecat service writes completions; sara and ida startup text ([11fa107](https://github.com/nicsuzor/academicOps/commit/11fa107fb9cdf31aa24a7a3b4643479c55895327))
+- **split:** polecats carry no plugins; reify before dispatch; drop surface detection and rbg references ([80ae066](https://github.com/nicsuzor/academicOps/commit/80ae0665bca24ce5bb021d57a60f0f0353b6241a))
+- **split:** sara is polecat dispatch only; routing moves to james; drop the agy skill ([53cbd30](https://github.com/nicsuzor/academicOps/commit/53cbd30a0b94d0c70c0dd7610823ec6f03fe9580))
+
+### Documentation
+
+- **specs:** add hydrate MCP workflow finder spec ([8b370a1](https://github.com/nicsuzor/academicOps/commit/8b370a1bfa04434348d3efc1ba933ac26a4d5eff))
+- **specs:** add hydrate MCP workflow finder spec ([749a74d](https://github.com/nicsuzor/academicOps/commit/749a74de18150f7898c3b79a899e951f7ad06ecf))
+
+### Tests
+
+- delete static-check and helper-unit test files ([8f3be6b](https://github.com/nicsuzor/academicOps/commit/8f3be6bc906b49c33cb3a03b812970c7d9b9ea86))
+- **split:** repoint tests at the plugins that now hold the behaviour ([af05eda](https://github.com/nicsuzor/academicOps/commit/af05eda37b831d5217efe5d1f765c84268f919d5))
+
 ## [1.13.2](https://github.com/nicsuzor/academicOps/compare/v1.13.1...v1.13.2) (2026-11-25)
 
 ### Bug Fixes
