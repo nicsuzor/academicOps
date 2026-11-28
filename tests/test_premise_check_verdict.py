@@ -176,6 +176,10 @@ def test_non_task_claim_refused_when_unarmed():
             "and every part of the ask is answered from observed outputs.",
         ),
         (
+            "AMENDED",
+            "Quantifier overstated relative to premise (1); amended claim directly to tested subset.",
+        ),
+        (
             "REVISE",
             "The reasoning is valid as stated, but the deliverable misses the edge case in scope; "
             "revise to address empty inputs before resubmitting.",
@@ -190,7 +194,7 @@ def test_non_task_claim_refused_when_unarmed():
 def test_free_form_natural_language_reasons_accepted_and_emit_flat_span_attributes(
     verdict: str, reason: str
 ):
-    """Free-form natural-language reasons are accepted for PASS/REVISE/FAIL on prose reports."""
+    """Free-form natural-language reasons are accepted for PASS/AMENDED/REVISE/FAIL on prose reports."""
     tracer = _configured_tracer()
     session_id = f"sess-freeform-{verdict}"
     claim_id = f"claim-free-{verdict.lower()}"

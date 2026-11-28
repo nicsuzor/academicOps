@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Record a premise-check verdict, emit its OpenTelemetry span, and disarm the gate.
 
-A verdict is one token (PASS, REVISE, FAIL) and a non-empty natural-language
+A verdict is one token (PASS, AMENDED, REVISE, FAIL) and a non-empty natural-language
 reason. The reason may come from a file or stdin so that free text stays off
 the command line, where harness guards scan it. Substantive review of reports
 and reasons belongs to checking agents; this recorder enforces only gate slot
@@ -44,7 +44,7 @@ def is_gate_minted_id(identifier: str) -> bool:
     return bool(_GATE_MINTED_ID_RE.match((identifier or "").strip()))
 
 
-VERDICTS: tuple[str, ...] = ("PASS", "REVISE", "FAIL")
+VERDICTS: tuple[str, ...] = ("PASS", "AMENDED", "REVISE", "FAIL")
 
 _TASK_ID_RE = re.compile(
     r"^(?:task|epic|aops|wf)[_-][a-zA-Z0-9_-]+$"
@@ -558,7 +558,7 @@ def main(argv: list[str] | None = None) -> int:
         "--verdict",
         type=str.upper,
         choices=VERDICTS,
-        help="PASS, REVISE or FAIL.",
+        help="PASS, AMENDED, REVISE or FAIL.",
     )
     parser.add_argument(
         "--title",

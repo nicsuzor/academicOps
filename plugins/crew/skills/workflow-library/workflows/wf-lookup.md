@@ -1,19 +1,17 @@
 ---
-title: Lookup workflow
+title: Lookup
 type: template
-description: Lightweight lookup workflow for PKB reads, PKB writes, memory curation, and graph operations -- delegates directly to the custodian with no task creation, no pull or dump ceremony, and Argdown-only handback per premise-check.
+description: "Crew: PKB reads and writes, memory curation, graph operations and overlap checks -- straight to the custodian, with no task and no ceremony."
 tags: [workflow, lookup, pkb, graph, fast-path]
 ---
 
-# Lookup Workflow
+## What this step does
 
-## Purpose and Scope
-
-Governs Personal Knowledge Base (PKB) reads, PKB writes, memory curation, graph operations, and checks for existing, related, or overlapping open work. Provides a direct, ceremony-free execution path for fast PKB queries, overlap checks, and graph maintenance. General web searches, filesystem lookups, and repository investigations remain outside this workflow and are handled directly by internal delegates.
+The direct path for knowledge-base work. Web, file and repository lookups are outside it.
 
 ## Requirements
 
-1. **Direct delegation to custodian**: Dispatch PKB reads, writes, graph operations, and overlap searches directly to the PKB custodian.
-2. **No task creation**: Do not create, queue, or reify a task on the task graph.
-3. **No pull or dump ceremony**: Neither the caller nor the custodian executes `/pull`, `/dump`, or task claim or release.
-4. **Handback requirement**: Report back solely in clean Argdown prose per `premise-check`, stating the original ask upfront and quoting deciding evidence inline.
+1. Send the request straight to the PKB custodian.
+2. Create, queue or reify no task.
+3. No `/pull`, `/dump`, claim or release.
+4. Hand back in prose Argdown per `premise-check`, with the ask first and the deciding evidence quoted.
